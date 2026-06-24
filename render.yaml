@@ -1,11 +1,15 @@
+# Render Blueprint — connect repo at https://dashboard.render.com/blueprints
 services:
   - type: web
     name: purrfect-circuit
     runtime: node
     plan: free
+    region: oregon
+    branch: main
     buildCommand: npm ci --omit=dev
-    startCommand: node server/index.js
+    startCommand: npm start
     healthCheckPath: /health
+    autoDeploy: true
     envVars:
       - key: NODE_ENV
         value: production
