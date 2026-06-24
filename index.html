@@ -1,0 +1,4678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Purrfect Circuit</title>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+    body {
+      background: #1a0a2e;
+      color: #fff;
+      font-family: 'Press Start 2P', monospace;
+      display: flex;
+      flex-direction: column;
+      image-rendering: pixelated;
+    }
+    #game-container {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      background: #2d1b4e;
+    }
+    header {
+      flex-shrink: 0;
+      text-align: center;
+      padding: clamp(8px, 1.5vh, 16px);
+      padding-right: clamp(56px, 10vw, 120px);
+      background: linear-gradient(180deg, #ff6eb4 0%, #c44d9a 100%);
+      border-bottom: 4px solid #ffd700;
+      position: relative;
+    }
+    .volume-control {
+      position: absolute;
+      top: 8px;
+      right: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      z-index: 5;
+    }
+    .volume-btn {
+      font-family: 'Press Start 2P', monospace;
+      font-size: clamp(6px, 1.1vw, 8px);
+      padding: 8px 10px;
+      background: #1a0a2e;
+      color: #ffd700;
+      border: 2px solid #ffd700;
+      cursor: pointer;
+      min-width: 42px;
+    }
+    .volume-btn:hover { background: #2d1b4e; }
+    .volume-panel {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #1a0a2e;
+      border: 2px solid #ffd700;
+      padding: 6px 10px;
+    }
+    .volume-panel.hidden { display: none; }
+    .volume-panel label {
+      font-size: clamp(5px, 1vw, 7px);
+      color: #ffb3d9;
+      white-space: nowrap;
+    }
+    #volume-slider {
+      width: clamp(80px, 14vw, 120px);
+      height: 8px;
+      accent-color: #ff6eb4;
+      cursor: pointer;
+    }
+    header h1 {
+      font-size: clamp(12px, 2.5vw, 22px);
+      text-shadow: 2px 2px 0 #8b2252;
+      letter-spacing: 2px;
+    }
+    header p {
+      font-size: clamp(6px, 1.2vw, 10px);
+      margin-top: 6px;
+      opacity: 0.9;
+    }
+    #screen {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    #screen > div:not(.hidden) {
+      flex: 1;
+      min-height: 0;
+    }
+    .hidden { display: none !important; }
+
+    #game-container.splash-active header { display: none; }
+
+    /* Splash */
+    #splash-screen {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: clamp(16px, 3vh, 32px);
+      background:
+        radial-gradient(circle at 20% 15%, rgba(255, 110, 180, 0.18) 0%, transparent 35%),
+        radial-gradient(circle at 80% 25%, rgba(127, 215, 255, 0.14) 0%, transparent 30%),
+        linear-gradient(180deg, #2d1b4e 0%, #1a0a2e 55%, #120820 100%);
+      overflow: hidden;
+    }
+    #splash-screen::before,
+    #splash-screen::after {
+      content: '🐾';
+      position: absolute;
+      font-size: clamp(28px, 6vw, 52px);
+      opacity: 0.14;
+      pointer-events: none;
+    }
+    #splash-screen::before { top: 8%; left: 10%; transform: rotate(-18deg); }
+    #splash-screen::after { bottom: 12%; right: 12%; transform: rotate(24deg); }
+    .splash-ear {
+      position: absolute;
+      top: 0;
+      width: 0;
+      height: 0;
+      border-left: clamp(36px, 7vw, 64px) solid transparent;
+      border-right: clamp(36px, 7vw, 64px) solid transparent;
+      border-bottom: clamp(52px, 10vw, 88px) solid #ff6eb4;
+      opacity: 0.35;
+      pointer-events: none;
+    }
+    .splash-ear.left { left: 4%; transform: rotate(-28deg); }
+    .splash-ear.right { right: 4%; transform: rotate(28deg); }
+    .splash-paws {
+      position: absolute;
+      width: 100%;
+      top: 18%;
+      font-size: clamp(14px, 2.5vw, 22px);
+      letter-spacing: clamp(20px, 5vw, 48px);
+      color: #ffd700;
+      opacity: 0.2;
+      pointer-events: none;
+    }
+    #splash-art {
+      display: block;
+      width: min(420px, 92vw);
+      height: auto;
+      margin: 0 auto clamp(12px, 2vh, 20px);
+      image-rendering: pixelated;
+      border: 4px solid #ff6eb4;
+      box-shadow: 0 0 0 3px #ffd700, 0 8px 24px rgba(0, 0, 0, 0.45);
+      background: #1a0a2e;
+    }
+    .splash-game-title {
+      font-size: clamp(14px, 3vw, 26px);
+      color: #ffd700;
+      text-shadow: 3px 3px 0 #8b2252, 0 0 18px rgba(255, 110, 180, 0.45);
+      margin-bottom: 8px;
+      letter-spacing: 2px;
+    }
+    .splash-tagline {
+      font-size: clamp(7px, 1.3vw, 10px);
+      color: #ffb3d9;
+      margin-bottom: clamp(18px, 3vh, 28px);
+      letter-spacing: 1px;
+    }
+    .splash-start-btn {
+      margin-bottom: clamp(12px, 2vh, 18px);
+      font-size: clamp(9px, 1.6vw, 13px);
+    }
+    .splash-prompt {
+      font-size: clamp(7px, 1.2vw, 9px);
+      color: #ffb3d9;
+      animation: splash-blink 1.1s step-end infinite;
+    }
+    .splash-volume-control {
+      position: absolute;
+      top: clamp(10px, 2vh, 16px);
+      right: clamp(10px, 2vw, 16px);
+      z-index: 10;
+    }
+    @keyframes splash-blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.25; }
+    }
+    .splash-actions {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: clamp(8px, 1.5vh, 12px);
+      width: min(320px, 88vw);
+      margin-bottom: clamp(10px, 2vh, 16px);
+    }
+    .splash-actions .splash-start-btn {
+      width: 100%;
+      margin-bottom: 0;
+    }
+    .btn.secondary,
+    .splash-start-btn.secondary {
+      background: #3d2a6e;
+      border-color: #7fd7ff;
+      color: #7fd7ff;
+    }
+    .btn.secondary:hover,
+    .splash-start-btn.secondary:hover { background: #5a3d9e; }
+    .splash-join-panel {
+      width: min(320px, 88vw);
+      margin-bottom: clamp(10px, 2vh, 16px);
+      padding: clamp(12px, 2vh, 18px);
+      background: rgba(26, 10, 46, 0.85);
+      border: 3px solid #7fd7ff;
+      text-align: center;
+    }
+    .splash-join-panel label {
+      display: block;
+      font-size: clamp(7px, 1.2vw, 9px);
+      color: #7fd7ff;
+      margin-bottom: 10px;
+    }
+    .splash-join-panel input {
+      width: 100%;
+      font-family: 'Press Start 2P', monospace;
+      font-size: clamp(12px, 2.2vw, 16px);
+      padding: 12px;
+      text-align: center;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      background: #1a0a2e;
+      color: #ffd700;
+      border: 3px solid #ff6eb4;
+    }
+    .join-error {
+      margin-top: 10px;
+      font-size: clamp(6px, 1.1vw, 8px);
+      color: #ff6eb4;
+      min-height: 1.4em;
+    }
+
+    /* Lobby */
+    #lobby-screen {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: clamp(12px, 2vh, 28px);
+      overflow-y: auto;
+      text-align: center;
+    }
+    #lobby-screen h2 {
+      font-size: clamp(10px, 2vw, 16px);
+      color: #ffd700;
+      margin-bottom: 10px;
+    }
+    .lobby-code {
+      font-size: clamp(12px, 2.4vw, 18px);
+      color: #7fd7ff;
+      margin-bottom: 8px;
+      letter-spacing: 2px;
+    }
+    .lobby-subtitle {
+      font-size: clamp(7px, 1.3vw, 9px);
+      color: #ffb3d9;
+      margin-bottom: clamp(16px, 3vh, 24px);
+      line-height: 1.8;
+      max-width: 520px;
+    }
+    .lobby-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: clamp(10px, 2vw, 14px);
+      width: min(820px, 100%);
+      margin-bottom: clamp(16px, 3vh, 24px);
+    }
+    .lobby-card {
+      position: relative;
+      background: #1a0a2e;
+      border: 3px solid #666;
+      padding: 14px 10px;
+      min-height: 88px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-size: clamp(6px, 1.1vw, 8px);
+    }
+    .lobby-card.self { border-color: #ffd700; box-shadow: 0 0 0 2px #ff6eb4; }
+    .lobby-card.ready { border-color: #7fd7ff; }
+    .lobby-card.empty { opacity: 0.45; border-style: dashed; }
+    .lobby-card strong { color: #ffd700; font-size: clamp(7px, 1.2vw, 9px); }
+    .lobby-card span { color: #ffb3d9; }
+    .lobby-slot-label { color: #666; }
+    .lobby-host,
+    .lobby-ready-tag,
+    .lobby-wait-tag {
+      position: absolute;
+      top: 6px;
+      font-size: clamp(5px, 0.9vw, 7px);
+    }
+    .lobby-host { left: 6px; color: #ffd700; }
+    .lobby-ready-tag { right: 6px; color: #7fd7ff; }
+    .lobby-wait-tag { right: 6px; color: #666; }
+    .lobby-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: center;
+      margin-bottom: 12px;
+    }
+    #lobby-ready-btn.ready-active {
+      background: #7fd7ff;
+      color: #1a0a2e;
+    }
+    .lobby-status {
+      font-size: clamp(7px, 1.2vw, 9px);
+      color: #ffb3d9;
+      line-height: 1.8;
+      max-width: 480px;
+    }
+
+    /* Setup */
+    #setup-screen {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 24px;
+    }
+    #setup-screen h2 {
+      font-size: clamp(10px, 2vw, 16px);
+      color: #ffd700;
+      margin-bottom: clamp(16px, 3vh, 28px);
+      line-height: 2;
+    }
+    .setup-prompt {
+      margin-top: 14px;
+      font-size: clamp(6px, 1.2vw, 8px);
+      color: #7fd7ff;
+      animation: splash-blink 1.4s step-end infinite;
+    }
+    .name-entry {
+      margin-bottom: clamp(20px, 4vh, 36px);
+      text-align: center;
+    }
+    .name-entry label {
+      display: block;
+      font-size: clamp(7px, 1.3vw, 9px);
+      color: #ffb3d9;
+      margin-bottom: 10px;
+    }
+    .name-entry input {
+      font-family: 'Press Start 2P', monospace;
+      font-size: clamp(8px, 1.4vw, 11px);
+      padding: 12px 14px;
+      background: #1a0a2e;
+      color: #ffd700;
+      border: 3px solid #ff6eb4;
+      text-align: center;
+      width: min(280px, 80vw);
+      outline: none;
+    }
+    .name-entry input:focus { border-color: #ffd700; }
+    .name-entry input::placeholder { color: #8866aa; }
+    .racer-select {
+      margin-bottom: clamp(16px, 3vh, 28px);
+      text-align: center;
+    }
+    .racer-select > label {
+      display: block;
+      font-size: clamp(7px, 1.3vw, 9px);
+      color: #ffb3d9;
+      margin-bottom: 12px;
+    }
+    .racer-options {
+      display: flex;
+      gap: clamp(10px, 2vw, 18px);
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .racer-option {
+      font-family: 'Press Start 2P', monospace;
+      background: #1a0a2e;
+      border: 3px solid #666;
+      padding: 8px;
+      cursor: pointer;
+      transition: transform 0.1s, border-color 0.1s;
+      width: 88px;
+    }
+    .racer-option:hover { transform: scale(1.04); }
+    .racer-option.selected {
+      border-color: #ffd700;
+      box-shadow: 0 0 0 2px #ff6eb4;
+    }
+    .racer-option canvas,
+    .racer-option .racer-portrait {
+      display: block;
+      width: 72px;
+      height: 72px;
+      margin: 0 auto 8px;
+      image-rendering: pixelated;
+      background: #2d1b4e;
+      object-fit: cover;
+      border: 2px solid #3d2a6e;
+    }
+    .racer-option span {
+      display: block;
+      font-size: clamp(6px, 1.1vw, 8px);
+      color: #ffd700;
+    }
+    .btn {
+      font-family: 'Press Start 2P', monospace;
+      font-size: clamp(10px, 1.8vw, 14px);
+      padding: clamp(10px, 2vh, 16px) clamp(18px, 4vw, 32px);
+      background: #ff6eb4;
+      color: #fff;
+      border: 4px solid #ffd700;
+      cursor: pointer;
+      text-transform: uppercase;
+      transition: transform 0.1s, background 0.1s;
+    }
+    .btn:hover { background: #ff8ec8; transform: scale(1.05); }
+    .btn:active { transform: scale(0.98); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    /* Training */
+    #training-screen {
+      display: flex;
+      gap: clamp(12px, 2vw, 24px);
+      flex-wrap: wrap;
+      align-items: flex-start;
+      justify-content: center;
+      padding: clamp(12px, 2vh, 24px);
+      overflow-y: auto;
+    }
+    .training-left { flex: 1; min-width: min(280px, 100%); max-width: 420px; }
+    .training-right { flex: 1; min-width: min(280px, 100%); max-width: 480px; }
+    .portrait-box {
+      background: #1a0a2e;
+      border: 3px solid #ffd700;
+      padding: 12px;
+      text-align: center;
+      margin-bottom: 16px;
+    }
+    .portrait-box canvas { image-rendering: pixelated; }
+    .portrait-box .name { font-size: 10px; color: #ff6eb4; margin-top: 8px; }
+    .turn-display {
+      font-size: 10px;
+      color: #ffd700;
+      margin-bottom: 16px;
+      padding: 8px;
+      background: #1a0a2e;
+      border: 2px solid #ff6eb4;
+    }
+    .training-rivals {
+      margin-top: 12px;
+      padding: 10px;
+      background: #1a0a2e;
+      border: 2px solid #7fd7ff;
+    }
+    .training-rivals h4 {
+      font-size: 8px;
+      color: #7fd7ff;
+      margin-bottom: 8px;
+    }
+    .training-rival-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 7px;
+      color: #ffb3d9;
+      margin-bottom: 4px;
+    }
+    .training-rival-row.done { color: #7fd7ff; }
+    .training-rival-row.self strong { color: #ffd700; }
+    .training-wait-status {
+      font-size: 8px;
+      color: #7fd7ff;
+      margin-top: 12px;
+      line-height: 1.8;
+      animation: splash-blink 1.4s step-end infinite;
+    }
+    .stat-row {
+      display: flex;
+      align-items: center;
+      margin-bottom: 10px;
+      font-size: 8px;
+      gap: 8px;
+    }
+    .stat-label { width: 90px; color: #ffb3d9; }
+    .stat-bar-bg {
+      flex: 1;
+      height: 16px;
+      background: #1a0a2e;
+      border: 2px solid #666;
+      position: relative;
+    }
+    .stat-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #ff6eb4, #ffd700);
+      transition: width 0.3s;
+    }
+    .stat-value { width: 24px; text-align: right; color: #ffd700; }
+    .train-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
+    .train-btn {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 8px;
+      padding: 12px 8px;
+      background: #3d2a6e;
+      color: #fff;
+      border: 3px solid #ff6eb4;
+      cursor: pointer;
+    }
+    .train-btn:hover { background: #5a3d9e; border-color: #ffd700; }
+    .train-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .info-panel {
+      font-size: 7px;
+      line-height: 1.8;
+      color: #ccc;
+      background: #1a0a2e;
+      border: 2px solid #666;
+      padding: 12px;
+      margin-top: 16px;
+    }
+    .info-panel h3 { font-size: 8px; color: #ffd700; margin-bottom: 8px; }
+    .training-options {
+      margin-top: 14px;
+      padding: 10px 12px;
+      background: #1a0a2e;
+      border: 2px solid #666;
+      text-align: left;
+    }
+    .training-anim-toggle {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: clamp(6px, 1.1vw, 8px);
+      color: #ffb3d9;
+      cursor: pointer;
+      user-select: none;
+    }
+    .training-anim-toggle input {
+      width: 14px;
+      height: 14px;
+      accent-color: #ff6eb4;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    /* Bonus modal */
+    #bonus-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+    #bonus-modal .modal-content {
+      background: #2d1b4e;
+      border: 4px solid #ffd700;
+      padding: 24px;
+      text-align: center;
+      max-width: min(520px, 92vw);
+    }
+    #bonus-modal h3 { font-size: 10px; color: #ffd700; margin-bottom: 16px; }
+    #bonus-modal .bonus-scenario {
+      font-size: clamp(6px, 1.2vw, 8px);
+      line-height: 1.9;
+      margin-bottom: 16px;
+      color: #ffe8f3;
+      text-align: left;
+      background: #1a0a2e;
+      border: 2px solid #ff6eb4;
+      padding: 14px;
+    }
+    #bonus-modal .bonus-prompt { font-size: 8px; margin-bottom: 20px; color: #ffb3d9; }
+    .bonus-options { display: flex; flex-direction: column; gap: 10px; }
+    .bonus-btn {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 9px;
+      padding: 14px;
+      background: #ff6eb4;
+      border: 3px solid #ffd700;
+      color: #fff;
+      cursor: pointer;
+    }
+    .bonus-btn:hover { background: #ff8ec8; }
+
+    /* Skill modal */
+    #skill-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+    #skill-modal .modal-content {
+      background: #2d1b4e;
+      border: 4px solid #7fd7ff;
+      padding: 24px;
+      text-align: center;
+      max-width: min(560px, 92vw);
+    }
+    #skill-modal h3 { font-size: 10px; color: #7fd7ff; margin-bottom: 12px; }
+    #skill-modal .skill-prompt {
+      font-size: 8px;
+      margin-bottom: 18px;
+      color: #ffb3d9;
+      line-height: 1.8;
+    }
+    .skill-options { display: flex; flex-direction: column; gap: 10px; }
+    .skill-btn {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 8px;
+      padding: 14px;
+      background: #2a4a6e;
+      border: 3px solid #7fd7ff;
+      color: #fff;
+      cursor: pointer;
+      text-align: left;
+      line-height: 1.7;
+    }
+    .skill-btn:hover { background: #3a6a9e; border-color: #ffd700; }
+    .skill-btn .skill-name { display: block; color: #ffd700; margin-bottom: 6px; font-size: 9px; }
+    .skill-picked {
+      font-size: 7px;
+      color: #7fd7ff;
+      margin-top: 12px;
+      padding: 10px;
+      background: #1a0a2e;
+      border: 2px solid #7fd7ff;
+      line-height: 1.8;
+    }
+
+    /* Training modal */
+    #training-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.88);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 110;
+    }
+    #training-modal .training-modal-content {
+      background: #2d1b4e;
+      border: 4px solid #ff6eb4;
+      box-shadow: 0 0 0 3px #ffd700, 0 12px 32px rgba(0, 0, 0, 0.5);
+      padding: clamp(16px, 3vh, 24px);
+      text-align: center;
+      width: min(400px, 92vw);
+    }
+    #training-modal h3 {
+      font-size: clamp(9px, 1.6vw, 11px);
+      color: #ffd700;
+      margin-bottom: 8px;
+      letter-spacing: 1px;
+    }
+    .training-modal-msg {
+      font-size: clamp(6px, 1.2vw, 8px);
+      color: #ffb3d9;
+      margin-bottom: 12px;
+      line-height: 1.7;
+    }
+    .training-scene {
+      background: #1a0a2e;
+      border: 3px solid #ffd700;
+      padding: 4px;
+      margin-bottom: 12px;
+    }
+    #training-anim-canvas {
+      display: block;
+      width: 100%;
+      height: auto;
+      image-rendering: pixelated;
+    }
+    .training-modal-stat {
+      font-size: clamp(8px, 1.4vw, 10px);
+      color: #7fd7ff;
+      animation: training-stat-pop 0.45s ease-out;
+    }
+    @keyframes training-stat-pop {
+      0% { transform: scale(0.6); opacity: 0; }
+      70% { transform: scale(1.08); opacity: 1; }
+      100% { transform: scale(1); }
+    }
+
+    /* Race */
+    #race-screen {
+      display: flex;
+      flex-direction: column;
+      padding: 0;
+      overflow: hidden;
+      position: relative;
+    }
+    .race-skip-btn,
+    .race-speed-btn {
+      font-family: 'Press Start 2P', monospace;
+      font-size: clamp(7px, 1.2vw, 9px);
+      padding: 10px 14px;
+      background: #3d2a6e;
+      color: #fff;
+      border: 3px solid #7fd7ff;
+      cursor: pointer;
+      text-transform: uppercase;
+    }
+    .race-skip-btn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      z-index: 20;
+    }
+    .race-skip-btn:hover,
+    .race-speed-btn:hover {
+      background: #5a3d9e;
+      border-color: #ffd700;
+    }
+    .race-speed-controls {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 20;
+      display: flex;
+      gap: 6px;
+    }
+    .race-speed-btn {
+      min-width: 42px;
+      padding: 10px 10px;
+    }
+    .race-speed-btn.active {
+      background: #ff6eb4;
+      border-color: #ffd700;
+      color: #fff;
+    }
+    #race-canvas {
+      display: block;
+      flex: 1;
+      width: 100%;
+      min-height: 0;
+      image-rendering: pixelated;
+      background: #87ceeb;
+    }
+    .race-hud {
+      flex-shrink: 0;
+      padding: clamp(8px, 1.5vh, 14px) clamp(12px, 2vw, 20px);
+      background: #1a0a2e;
+      border-top: 3px solid #ffd700;
+      font-size: clamp(7px, 1.2vw, 9px);
+    }
+    .race-hud .position {
+      color: #ffd700;
+      font-size: clamp(8px, 1.4vw, 11px);
+      margin-bottom: 6px;
+    }
+    .race-hud .race-speed {
+      color: #7fd7ff;
+      font-size: clamp(8px, 1.4vw, 11px);
+      margin-bottom: 6px;
+    }
+    .race-hud .event-log { color: #ffb3d9; line-height: 1.6; min-height: 2.5em; }
+
+    /* Lineup */
+    #lineup-screen {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: clamp(12px, 2vh, 28px);
+      overflow-y: auto;
+      text-align: center;
+    }
+    #lineup-screen h2 {
+      font-size: clamp(10px, 2vw, 16px);
+      color: #ffd700;
+      margin-bottom: 8px;
+      line-height: 1.8;
+    }
+    .lineup-subtitle {
+      font-size: clamp(7px, 1.3vw, 9px);
+      color: #ffb3d9;
+      margin-bottom: clamp(16px, 3vh, 24px);
+      line-height: 1.8;
+      max-width: 520px;
+    }
+    .lineup-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: clamp(10px, 2vw, 16px);
+      width: min(920px, 100%);
+      margin-bottom: clamp(18px, 3vh, 28px);
+    }
+    .lineup-card {
+      background: #1a0a2e;
+      border: 3px solid #666;
+      padding: 12px 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+    .lineup-card.player-card {
+      border-color: #ffd700;
+      box-shadow: 0 0 0 2px #ff6eb4;
+    }
+    .lineup-card canvas {
+      display: block;
+      width: 64px;
+      height: 64px;
+      image-rendering: pixelated;
+      background: #2d1b4e;
+    }
+    .lineup-name {
+      font-size: clamp(7px, 1.2vw, 9px);
+      color: #ffd700;
+      line-height: 1.6;
+      word-break: break-word;
+    }
+    .lineup-card.player-card .lineup-name { color: #ff6eb4; }
+    .lineup-tag {
+      font-size: clamp(6px, 1vw, 7px);
+      color: #7fd7ff;
+    }
+    .lineup-skill {
+      font-size: clamp(6px, 1vw, 7px);
+      color: #7fd7ff;
+      line-height: 1.5;
+    }
+    .lineup-stats {
+      width: 100%;
+      font-size: clamp(6px, 1vw, 7px);
+      line-height: 1.8;
+    }
+    .lineup-stat {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      color: #ffb3d9;
+    }
+    .lineup-stat strong { color: #ffd700; }
+    .lineup-prompt {
+      margin-top: 12px;
+      font-size: clamp(6px, 1.2vw, 8px);
+      color: #7fd7ff;
+      animation: splash-blink 1.4s step-end infinite;
+    }
+
+    /* Results */
+    #results-screen {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: clamp(16px, 3vh, 40px);
+      overflow-y: auto;
+    }
+    #results-screen h2 { font-size: clamp(12px, 2.5vw, 18px); margin-bottom: 16px; }
+    #results-screen .result-text {
+      font-size: clamp(8px, 1.5vw, 11px);
+      line-height: 2;
+      margin-bottom: 24px;
+      color: #ffb3d9;
+    }
+    #results-screen .results-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: center;
+    }
+    #results-screen .btn-secondary {
+      background: #3d2a6e;
+      border-color: #7fd7ff;
+    }
+    #results-screen .btn-secondary:hover { background: #5a3d9e; }
+    #results-screen .final-stats {
+      font-size: clamp(7px, 1.3vw, 10px);
+      text-align: left;
+      display: inline-block;
+      margin-bottom: 24px;
+      line-height: 2;
+    }
+    .win { color: #ffd700; }
+    .lose { color: #ff6eb4; }
+  </style>
+</head>
+<body>
+  <div id="game-container">
+    <header>
+      <div class="volume-control" id="volume-control">
+        <button type="button" class="volume-btn" id="volume-btn" aria-label="Volume">VOL</button>
+        <div class="volume-panel hidden" id="volume-panel">
+          <label for="volume-slider">MUSIC</label>
+          <input type="range" id="volume-slider" min="0" max="100" value="55">
+        </div>
+      </div>
+      <h1>PURRFECT CIRCUIT</h1>
+      <p>16-BIT CATGIRL RACING</p>
+    </header>
+
+    <div id="screen">
+      <!-- Splash -->
+      <div id="splash-screen">
+        <div class="volume-control splash-volume-control" id="splash-volume-control">
+          <button type="button" class="volume-btn" id="splash-volume-btn" aria-label="Volume">VOL</button>
+          <div class="volume-panel hidden" id="splash-volume-panel">
+            <label for="splash-volume-slider">MUSIC</label>
+            <input type="range" id="splash-volume-slider" min="0" max="100" value="55">
+          </div>
+        </div>
+        <div class="splash-ear left"></div>
+        <div class="splash-ear right"></div>
+        <div class="splash-paws">🐾 🐾 🐾 🐾 🐾</div>
+        <img id="splash-art" alt="Purrfect Circuit racers" width="320" height="180">
+        <h2 class="splash-game-title">PURRFECT CIRCUIT</h2>
+        <p class="splash-tagline">~ train • race • nya ~</p>
+        <div class="splash-actions">
+          <button type="button" class="btn splash-start-btn" id="splash-create-btn">CREATE ROOM</button>
+          <button type="button" class="btn splash-start-btn secondary" id="splash-join-toggle">JOIN ROOM</button>
+          <button type="button" class="btn splash-start-btn secondary" id="splash-solo-btn">SOLO PLAY</button>
+        </div>
+        <div class="splash-join-panel hidden" id="splash-join-panel">
+          <label for="join-room-code">ROOM CODE</label>
+          <input type="text" id="join-room-code" maxlength="6" placeholder="ABC123" autocomplete="off" spellcheck="false">
+          <button type="button" class="btn" id="splash-join-confirm" style="margin-top:10px;width:100%;">JOIN</button>
+          <p class="join-error" id="join-error"></p>
+        </div>
+        <p class="splash-prompt" id="splash-prompt">ONLINE: CREATE OR JOIN A ROOM</p>
+      </div>
+
+      <!-- Setup -->
+      <div id="setup-screen" class="hidden">
+        <h2>Choose your catgirl.<br>Ready to race?</h2>
+        <div class="racer-select">
+          <label>CHOOSE YOUR CATGIRL</label>
+          <div class="racer-options" id="racer-options"></div>
+        </div>
+        <div class="name-entry">
+          <label for="racer-name-input">RACER NAME</label>
+          <input type="text" id="racer-name-input" maxlength="12" placeholder="Nya-Runner" autocomplete="off" spellcheck="false">
+        </div>
+        <button class="btn" id="start-btn">START TRAINING</button>
+        <p class="setup-prompt">PRESS ENTER TO START</p>
+      </div>
+
+      <!-- Training -->
+      <div id="training-screen" class="hidden">
+        <div class="training-left">
+          <div class="portrait-box">
+            <canvas id="portrait-canvas" width="96" height="96"></canvas>
+            <div class="name" id="portrait-name">NYA-RUNNER</div>
+          </div>
+          <div class="turn-display" id="turn-display">TURN 1 / 10</div>
+          <div id="stats-panel"></div>
+          <div class="training-rivals hidden" id="training-rivals">
+            <h4>RIVALS</h4>
+            <div id="training-rivals-list"></div>
+          </div>
+        </div>
+        <div class="training-right">
+          <p style="font-size:8px;color:#ffd700;margin-bottom:12px;">CHOOSE A STAT TO TRAIN (+1)</p>
+          <div class="train-buttons" id="train-buttons"></div>
+          <div class="training-options">
+            <label class="training-anim-toggle" for="training-anim-toggle">
+              <input type="checkbox" id="training-anim-toggle" checked>
+              <span>SHOW TRAINING POP-UPS</span>
+            </label>
+          </div>
+          <div class="info-panel">
+            <h3>STAT GUIDE</h3>
+            <strong>SPEED</strong> — Top speed on the track<br>
+            <strong>STAMINA</strong> — Need 15+ at 75% of lap or -25% speed<br>
+            <strong>AGILITY</strong> — Passing runners &amp; hurdle speed recovery<br>
+            <strong>FOCUS</strong> — Steady pacing; less random speed wobble<br><br>
+            <strong>TURN 6</strong> — Learn one race skill
+          </div>
+          <div class="skill-picked hidden" id="skill-picked"></div>
+          <p class="training-wait-status hidden" id="training-wait-status">Waiting for other racers to finish training...</p>
+        </div>
+      </div>
+
+      <!-- Lobby -->
+      <div id="lobby-screen" class="hidden">
+        <h2>RACE LOBBY</h2>
+        <p class="lobby-code">ROOM: <span id="lobby-room-code">------</span></p>
+        <p class="lobby-subtitle">Share the room code. Everyone clicks Ready, then the host starts training.</p>
+        <div class="lobby-grid" id="lobby-grid"></div>
+        <div class="lobby-actions">
+          <button class="btn" id="lobby-ready-btn">READY</button>
+          <button class="btn hidden" id="lobby-start-btn">START TRAINING</button>
+        </div>
+        <p class="lobby-status" id="lobby-status">Waiting for racers...</p>
+      </div>
+
+      <!-- Lineup -->
+      <div id="lineup-screen" class="hidden">
+        <h2>TRAINING COMPLETE!</h2>
+        <p class="lineup-subtitle">Meet the field — review every racer's stats before the starting gun.</p>
+        <div class="lineup-grid" id="lineup-grid"></div>
+        <button class="btn" id="lineup-start-btn">START RACE</button>
+        <p class="lineup-prompt">PRESS ENTER TO START</p>
+      </div>
+
+      <!-- Race -->
+      <div id="race-screen" class="hidden">
+        <div class="race-speed-controls hidden" id="race-speed-controls">
+          <button type="button" class="race-speed-btn active" id="race-speed-1x" data-speed="1">x1</button>
+          <button type="button" class="race-speed-btn" id="race-speed-2x" data-speed="2">x2</button>
+          <button type="button" class="race-speed-btn" id="race-speed-4x" data-speed="4">x4</button>
+        </div>
+        <button type="button" class="race-skip-btn hidden" id="race-skip-btn">SKIP</button>
+        <button type="button" class="race-skip-btn hidden" id="replay-skip-btn">SKIP</button>
+        <canvas id="race-canvas"></canvas>
+        <div class="race-hud">
+          <div class="position" id="race-position">POSITION: --</div>
+          <div class="race-speed" id="race-speed">SPEED: -- MPH</div>
+          <div class="event-log" id="event-log">Race starting...</div>
+        </div>
+      </div>
+
+      <!-- Results -->
+      <div id="results-screen" class="hidden">
+        <canvas id="results-canvas" width="120" height="120" style="margin:0 auto 20px;display:block;"></canvas>
+        <h2 id="result-title">RESULTS</h2>
+        <div class="result-text" id="result-text"></div>
+        <div class="final-stats" id="final-stats"></div>
+        <div class="results-buttons">
+          <button class="btn btn-secondary" id="replay-btn">REPLAY RACE</button>
+          <button class="btn" id="restart-btn">PLAY AGAIN</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Skill Modal -->
+  <div id="skill-modal" class="hidden">
+    <div class="modal-content">
+      <h3>RACE SKILL — TURN 6</h3>
+      <p class="skill-prompt">Choose one special ability for race day. You can only pick one!</p>
+      <div class="skill-options" id="skill-options"></div>
+    </div>
+  </div>
+
+  <!-- Training Modal -->
+  <div id="training-modal" class="hidden">
+    <div class="modal-content training-modal-content">
+      <h3 id="training-modal-title">TRAINING</h3>
+      <p class="training-modal-msg" id="training-modal-msg"></p>
+      <div class="training-scene">
+        <canvas id="training-anim-canvas" width="320" height="200"></canvas>
+      </div>
+      <p class="training-modal-stat" id="training-modal-stat"></p>
+    </div>
+  </div>
+
+  <!-- Bonus Modal -->
+  <div id="bonus-modal" class="hidden">
+    <div class="modal-content">
+      <h3>BONUS TRAINING!</h3>
+      <p class="bonus-scenario" id="bonus-scenario"></p>
+      <p class="bonus-prompt">Pick one stat to boost by +2</p>
+      <div class="bonus-options" id="bonus-options"></div>
+    </div>
+  </div>
+
+  <script src="sprites.js"></script>
+  <script src="track.js"></script>
+  <script src="cpu-stats.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const STAT_NAMES = ['speed', 'stamina', 'agility', 'focus'];
+    const STAT_LABELS = { speed: 'SPEED', stamina: 'STAMINA', agility: 'AGILITY', focus: 'FOCUS' };
+    const TRAINING_ANIM = {
+      speed: {
+        animKey: 'runFull',
+        label: 'SPEED TRAINING',
+        msgs: [
+          'Sprint drills on the circuit!',
+          'Push your pace — faster every lap!',
+          'The wind whips past as you blur down the straight.',
+          'Coach blows the whistle. Full speed ahead!',
+          'Your legs pump like pistons on the track.',
+          'Nya~! Leave the dust behind!'
+        ],
+        speedMod: 1.15
+      },
+      stamina: {
+        animKey: 'jumpingJacks',
+        label: 'STAMINA TRAINING',
+        msgs: [
+          'Jumping jacks — build that stamina!',
+          'One more rep! Arms up, legs out!',
+          'Heart pounding, breath steady — you can do this!',
+          'The gym echoes with your rhythm. Keep going!',
+          'Sweat drips but your spirit stays strong!',
+          'Jump! Jump! Endurance is catgirl power!'
+        ],
+        speedMod: 1,
+        trainingSheet: true,
+        centered: true
+      },
+      agility: {
+        animKey: 'runFull',
+        label: 'AGILITY TRAINING',
+        msgs: [
+          'Quick feet and sharp turns!',
+          'Zigzag through cones like a lightning bolt!',
+          'Pivot, dodge, sprint — reflexes on fire!',
+          'Your tail swishes as you weave through drills.',
+          'Light on your feet, sharp in your mind!',
+          'Agility day means nobody catches you!'
+        ],
+        speedMod: 1.45
+      },
+      focus: {
+        animKey: 'portrait',
+        label: 'FOCUS TRAINING',
+        msgs: [
+          'Block out the crowd. Just the lane.',
+          'Heartbeat slows. Paw steps stay even.',
+          'Eyes on the finish line — breathe in, nya~',
+          'You visualize every hurdle before you reach it.',
+          'Coach rings the bell. Mind clear, stride steady.',
+          'Composure is speed you do not waste.'
+        ],
+        speedMod: 0.6,
+        centered: true
+      }
+    };
+
+    function pickTrainingMessage(stat) {
+      const config = TRAINING_ANIM[stat] || TRAINING_ANIM.speed;
+      const lines = config.msgs || [];
+      if (!lines.length) return 'Training time!';
+      return lines[Math.floor(Math.random() * lines.length)];
+    }
+
+    const FRAME_DATA_JUMPING_JACKS = {
+      jumpingJacks: [
+        { sx:43,  sy:185, sw:134, sh:295, feet:479 },
+        { sx:237, sy:185, sw:161, sh:295, feet:479 },
+        { sx:435, sy:185, sw:151, sh:288, feet:472 },
+        { sx:629, sy:185, sw:142, sh:295, feet:479 },
+        { sx:823, sy:185, sw:134, sh:295, feet:479 }
+      ]
+    };
+    const TRAINING_MODAL_MS = 2600;
+    const TRAINING_ANIM_KEY = 'purrfectCircuitTrainingAnim';
+    const MAX_TURNS = 10;
+    const BONUS_TURNS = [3, 6, 9];
+    const SKILL_TURN = 6;
+
+    const RACE_SKILLS = [
+      {
+        id: 'secondWind',
+        name: 'Second Wind',
+        description: 'At 50% lap: +10 Stamina'
+      },
+      {
+        id: 'midraceSurge',
+        name: 'Midrace Surge',
+        description: 'At 50% lap: +20 Speed'
+      },
+      {
+        id: 'finalKick',
+        name: 'Final Kick',
+        description: 'At 75% lap: +30 Speed'
+      }
+    ];
+
+    const BONUS_SCENARIOS = [
+      'A stray sunbeam hits the track just as you arrive for practice. Your coach left a note on your locker: "Today is your day, Nya-Runner." You stretch once and feel every muscle wake up ready to run.',
+      'The wind is at your back on the practice straight. You lean into it and your stride opens up like wings. By the end of the lap you are grinning and breathing easy.',
+      'A quick shower passes and leaves the track cool and grippy under your shoes. A rainbow arcs over the infield while you drill your corners. Something clicks and your rhythm feels effortless.',
+      'You find a stack of fan letters tied with a purple ribbon in your training bag. One letter says your last sprint gave someone courage to try again. You tuck it away and run harder than ever.',
+      'A friendly catgirl you have never met jogs a lap beside you without a word. She matches your pace perfectly, then waves and vanishes around the bend. Your legs feel lighter for the rest of the session.',
+      'Your teammate trades you her lucky rice ball for yours before the afternoon drill. It tastes like victory and somehow like home. You finish training with a full belly and a sharper focus.',
+      'The grounds crew just resurfaced lane one and it feels like running on a cloud. Every step rebounds just right without wasting energy. You stop early only because you are smiling too much to breathe.',
+      'You stay late when the stadium lights click on one extra hour for free. The empty oval glows gold and purple under the lamps. In the quiet you hear your own footsteps telling you exactly how fast you can go.',
+      'You kick a pebble and it skitters into a bush where a purple wristband waits. It fits your wrist like it was always yours. The rest of practice feels charmed in the best way.',
+      'Your coach blows the whistle once and points at you alone. "Show me what you have been saving," she says with a rare smile. You dig deep and discover a gear you did not know you had.'
+    ];
+    const DEFAULT_RACER_NAME = 'Nya-Runner';
+    const MAX_RACER_NAME_LEN = 12;
+    const STAMINA_REQUIREMENT = 15;
+    const LAP_LENGTH = 1000;
+    const TOTAL_LAPS = 1;
+    const RACE_LENGTH = LAP_LENGTH * TOTAL_LAPS;
+    const STAMINA_CHECK_POINT = 0.75;
+    const RACE_SPEED_TO_MPH = 0.32;
+    const PACE_VARIANCE_MAX = 0.10;
+    const PACE_VARIANCE_MIN = 0.04;
+    const PACE_FLOOR_MIN = 0.95;
+    const PACE_FLOOR_MAX = 0.98;
+    const PACE_FOCUS_BASE = 5;
+    const PACE_FOCUS_SCALE = 15;
+    const HURDLE_PROGRESSES = [0.15, 0.60];
+    const HURDLE_JUMP_LEAD = 24;
+    const HURDLE_CLEAR_TRAIL = 12;
+    const HURDLE_JUMP_DURATION = 0.32;
+    const HURDLE_JUMP_LIFT = 0.2;
+    const HURDLE_WIDTH_SCALE = 0.5;
+    const HURDLE_SPEED_MULTIPLIER = 0.5;
+    const HURDLE_RECOVERY_BASE_SEC = 3;
+    const HURDLE_SPRITE = {
+      sx: 0, sy: 0, sw: 630, sh: 552,
+      feetX: 315, feetY: 551
+    };
+    const HURDLE_PATHS = [
+      'hurdle-sprite.png',
+      'hurdle.png',
+      'hurdle.jpg'
+    ];
+
+    function getHurdleZones() {
+      return HURDLE_PROGRESSES.map((progress, index) => {
+        const position = LAP_LENGTH * progress;
+        return {
+          index,
+          progress,
+          position,
+          jumpStart: position - HURDLE_JUMP_LEAD,
+          clearPos: position + HURDLE_CLEAR_TRAIL
+        };
+      });
+    }
+
+    function createHurdlesClearedState() {
+      return HURDLE_PROGRESSES.map(() => false);
+    }
+
+    function allHurdlesCleared(racer) {
+      return racer.hurdlesCleared?.every(Boolean);
+    }
+
+    function getActiveHurdleZone(racer) {
+      const zones = getHurdleZones();
+      if (Number.isFinite(racer.activeHurdleIndex) && racer.activeHurdleIndex >= 0) {
+        const zone = zones[racer.activeHurdleIndex];
+        if (zone && !racer.hurdlesCleared?.[racer.activeHurdleIndex]) return zone;
+      }
+      for (let i = 0; i < zones.length; i++) {
+        if (racer.hurdlesCleared?.[i]) continue;
+        const zone = zones[i];
+        if (racer.position >= zone.jumpStart && racer.position < zone.clearPos) {
+          return zone;
+        }
+      }
+      return null;
+    }
+
+    function getLapNumber(position) {
+      return Math.min(TOTAL_LAPS, Math.floor(position / LAP_LENGTH) + 1);
+    }
+
+    function getLapProgress(position) {
+      if (position >= RACE_LENGTH) return 1;
+      return (position % LAP_LENGTH) / LAP_LENGTH;
+    }
+
+    const DEFAULT_CPU_RUNNERS = [
+      { name: 'Kitty Litter', stats: { speed: 15, stamina: 12, agility: 11 } },
+      { name: 'Luna',   stats: { speed: 13, stamina: 16, agility: 10 } },
+      { name: 'Sakura', stats: { speed: 14, stamina: 11, agility: 14 } },
+      { name: 'Hana',   stats: { speed: 12, stamina: 14, agility: 12 } },
+      { name: 'Yuki',   stats: { speed: 16, stamina: 10, agility: 13 } }
+    ];
+
+    const CPU_RACER_STYLES = [
+      { id: 'cpu-mint',   name: 'Kitty Litter', label: 'MINT',   path: 'cpu-mint.png' },
+      { id: 'cpu-rose',   name: 'Luna',         label: 'ROSE',   path: 'cpu-rose.png' },
+      { id: 'cpu-sky',    name: 'Sakura',       label: 'SKY',    path: 'cpu-sky.png' },
+      { id: 'cpu-lime',   name: 'Hana',         label: 'LIME',   path: 'cpu-lime.png' },
+      { id: 'cpu-violet', name: 'Yuki',         label: 'VIOLET', path: 'cpu-violet.png' }
+    ];
+    const RACE_LANE_COUNT = 6;
+    const RACER_CHOICE_KEY = 'purrfectCircuitRacer';
+    const SESSION_KEY = 'purrfectCircuitSession';
+    const RACER_CHOICES = [
+      {
+        id: 'purple',
+        label: 'LILAC',
+        portraitPath: 'portrait-select-lilac.jpg',
+        paths: ['catgirl-lilac-sprites.jpg']
+      },
+      {
+        id: 'yellow',
+        label: 'SUNNY',
+        portraitPath: 'portrait-select-sunny.jpg',
+        paths: ['catgirl-yellow-transparent.png', 'catgirl-yellow.jpg']
+      },
+      {
+        id: 'orange',
+        label: 'EMBER',
+        portraitPath: 'portrait-select-ember.jpg',
+        paths: ['catgirl-orange-transparent.png', 'catgirl-orange.jpg']
+      }
+    ];
+
+    const FRAME_DATA_PURPLE = {
+      idle: [
+        { sx:42,  sy:29, sw:60,  sh:84, feet:113 },
+        { sx:102, sy:29, sw:102, sh:84, feet:113 },
+        { sx:204, sy:29, sw:102, sh:84, feet:113 },
+        { sx:306, sy:29, sw:102, sh:84, feet:113 },
+        { sx:408, sy:29, sw:91,  sh:84, feet:113 }
+      ],
+      portrait: [
+        { sx:102, sy:29, sw:102, sh:84, feet:113 }
+      ],
+      runStart: [
+        { sx:102, sy:139, sw:102, sh:85, feet:224 },
+        { sx:204, sy:139, sw:95,  sh:85, feet:224 },
+        { sx:313, sy:139, sw:78,  sh:85, feet:224 },
+        { sx:409, sy:139, sw:101, sh:85, feet:224 },
+        { sx:515, sy:139, sw:97,  sh:85, feet:224 },
+        { sx:615, sy:139, sw:95,  sh:85, feet:224 },
+        { sx:714, sy:139, sw:102, sh:85, feet:224 },
+        { sx:816, sy:139, sw:73,  sh:85, feet:224 }
+      ],
+      runFull: [
+        { sx:309, sy:249, sw:82,  sh:85, feet:334 },
+        { sx:714, sy:249, sw:102, sh:85, feet:334 }
+      ],
+      jump: [
+        { sx:55,  sy:360, sw:65,  sh:83, feet:443 },
+        { sx:256, sy:360, sw:128, sh:83, feet:443 }
+      ],
+      finish: [
+        { sx:517, sy:454, sw:163, sh:107, feet:561 }
+      ]
+    };
+
+    const FRAME_DATA_YELLOW = {
+      portrait: [{ sx:249, sy:56, sw:87, sh:130, feet:185 }],
+      runStart: [
+        { sx:128, sy:242, sw:80, sh:147, feet:388 },
+        { sx:267, sy:242, sw:101, sh:147, feet:388 },
+        { sx:405, sy:242, sw:115, sh:147, feet:388 },
+        { sx:558, sy:242, sw:107, sh:147, feet:388 }
+      ],
+      runFull: [
+        { sx:128, sy:434, sw:85, sh:138, feet:571 },
+        { sx:267, sy:434, sw:99, sh:138, feet:571 },
+        { sx:405, sy:434, sw:114, sh:138, feet:571 },
+        { sx:558, sy:434, sw:107, sh:138, feet:571 },
+        { sx:704, sy:434, sw:100, sh:138, feet:571 },
+        { sx:856, sy:434, sw:86, sh:138, feet:571 }
+      ],
+      jump: [
+        { sx:96,  sy:626, sw:112, sh:130, feet:755 },
+        { sx:407, sy:626, sw:111, sh:130, feet:755 }
+      ],
+      finish: [{ sx:240, sy:818, sw:96, sh:128, feet:945 }]
+    };
+
+    const FRAME_DATA_ORANGE = {
+      portrait: [{ sx:251, sy:54, sw:85, sh:132, feet:185 }],
+      runStart: FRAME_DATA_YELLOW.runStart,
+      runFull: [
+        { sx:128, sy:434, sw:85, sh:138, feet:571 },
+        { sx:267, sy:434, sw:98, sh:138, feet:571 },
+        { sx:405, sy:434, sw:114, sh:138, feet:571 },
+        { sx:558, sy:434, sw:107, sh:138, feet:571 },
+        { sx:709, sy:434, sw:95, sh:138, feet:571 },
+        { sx:856, sy:434, sw:86, sh:138, feet:571 }
+      ],
+      jump: [
+        { sx:96,  sy:626, sw:112, sh:130, feet:755 },
+        { sx:407, sy:626, sw:111, sh:130, feet:755 }
+      ],
+      finish: FRAME_DATA_YELLOW.finish
+    };
+
+    RACER_CHOICES[0].frames = FRAME_DATA_PURPLE;
+    RACER_CHOICES[1].frames = FRAME_DATA_YELLOW;
+    RACER_CHOICES[2].frames = FRAME_DATA_ORANGE;
+
+    let selectedRacerId = 'purple';
+    const multiplayer = {
+      mode: 'solo',
+      socket: null,
+      connected: false,
+      room: null,
+      playerId: null,
+      localReady: false,
+      racerMeta: {}
+    };
+    let currentFrameData = FRAME_DATA_PURPLE;
+    let racerSpriteCache = {};
+    let cpuSpriteCache = {};
+    let trainingJacksSheet = null;
+    let trainingJacksReady = false;
+
+    const ANIMATIONS = {
+      idle:         { fps: 4 },
+      portrait:     { fps: 2 },
+      runStart:     { fps: 9 },
+      runFull:      { fps: 12 },
+      jump:         { fps: 5 },
+      finish:       { fps: 6 },
+      jumpingJacks: { fps: 5 }
+    };
+
+    let spriteSheet = null;
+    let processedSheet = null;
+    let spritesReady = false;
+    let trackLaneImage = null;
+    let trackBgImage = null;
+    let trackReady = false;
+    let hurdleImage = null;
+    let processedHurdle = null;
+    let hurdleReady = false;
+    let trackDrawRect = { dx: 0, dy: 0, dw: 800, dh: 400 };
+    let globalAnimTime = 0;
+    let gameState = {};
+    let trainingModalActive = false;
+    let trainingAnimState = null;
+    let trainingAnimationsEnabled = true;
+    let titleBgm = null;
+    let setupBgm = null;
+    let trainingBgm = null;
+    let preRaceBgm = null;
+    let raceBgm = null;
+    let resultsBgm = null;
+    const DEFAULT_MUSIC_VOLUME = 0.55;
+    const MUSIC_VOLUME_KEY = 'purrfectCircuitMusicVolume';
+    let musicVolume = DEFAULT_MUSIC_VOLUME;
+    let raceReplay = { frames: [], duration: 0, finalized: false };
+    let replaySampleTimer = 0;
+    let raceSpeedMultiplier = 1;
+    const REPLAY_SAMPLE_INTERVAL = 0.05;
+
+    const TITLE_ART_PATHS = [
+      'title-screen.jpg',
+      'title-screen.png'
+    ];
+
+    const TITLE_BGM_PATHS = [
+      'js music/Exhale.mp3',
+      'title-bgm.mp3'
+    ];
+
+    const SETUP_BGM_PATHS = [
+      'js music/RIP MJB 2.mp3'
+    ];
+
+    const TRAINING_BGM_PATHS = [
+      'training-bgm.mp3',
+      'For the Love.mp3'
+    ];
+
+    const PRE_RACE_BGM_PATHS = [
+      'Pre-race.mp3'
+    ];
+
+    const RACE_BGM_PATHS = [
+      'race-bgm.mp3',
+      "Anse Source D'argent.mp3"
+    ];
+
+    const RESULTS_BGM_PATHS = [
+      'results-bgm.m4a',
+      'Recording (6).m4a'
+    ];
+
+    function initGame() {
+      gameState = {
+        phase: 'splash',
+        turn: 1,
+        player: {
+          name: DEFAULT_RACER_NAME,
+          racerId: selectedRacerId,
+          stats: { speed: 5, stamina: 5, agility: 5, focus: 5 },
+          raceSkill: null,
+          isPlayer: true
+        },
+        cpus: [],
+        racers: [],
+        raceRunning: false,
+        raceFinished: false,
+        serverRace: false,
+        eventLog: []
+      };
+    }
+
+    function showScreen(id) {
+      ['splash-screen', 'setup-screen', 'lobby-screen', 'training-screen', 'lineup-screen', 'race-screen', 'results-screen'].forEach(s => {
+        document.getElementById(s).classList.add('hidden');
+      });
+      document.getElementById(id).classList.remove('hidden');
+      document.getElementById('game-container').classList.toggle('splash-active', id === 'splash-screen');
+      requestAnimationFrame(resizeLayout);
+    }
+
+    function updateSetupStartButton() {
+      const btn = document.getElementById('start-btn');
+      if (!btn || btn.disabled) return;
+      btn.textContent = multiplayer.mode === 'solo' ? 'START TRAINING' : 'ENTER LOBBY';
+    }
+
+    function goToSetup() {
+      gameState.phase = 'setup';
+      showScreen('setup-screen');
+      renderRacerOptions();
+      setRacerNameInputFromChoice(selectedRacerId);
+      updateSetupStartButton();
+      playSetupBgm();
+    }
+
+    function setJoinError(message) {
+      const el = document.getElementById('join-error');
+      if (el) el.textContent = message || '';
+    }
+
+    function saveMultiplayerSession(code, token) {
+      try {
+        localStorage.setItem(SESSION_KEY, JSON.stringify({ code, token }));
+      } catch (e) {}
+    }
+
+    function loadMultiplayerSession() {
+      try {
+        const raw = localStorage.getItem(SESSION_KEY);
+        if (!raw) return null;
+        const data = JSON.parse(raw);
+        if (data?.code && data?.token) return data;
+      } catch (e) {}
+      return null;
+    }
+
+    function clearMultiplayerSession() {
+      try { localStorage.removeItem(SESSION_KEY); } catch (e) {}
+    }
+
+    function applyRoomReconnect(res) {
+      multiplayer.mode = res.hostId === res.playerId ? 'host' : 'join';
+      multiplayer.playerId = res.playerId;
+      multiplayer.room = res;
+      multiplayer.localReady = !!getLocalRoomPlayer()?.ready;
+      saveMultiplayerSession(res.code, res.playerId);
+
+      const phase = res.phase;
+      if (phase === 'lobby') {
+        gameState.phase = 'lobby';
+        showScreen('lobby-screen');
+        renderLobby();
+        return;
+      }
+      if (phase === 'training') {
+        startTraining();
+        return;
+      }
+      if (phase === 'lineup') {
+        showLineupScreen();
+        return;
+      }
+      if (phase === 'race' && res.sync?.race) {
+        resumeMultiplayerRace(res.sync.race, false);
+        return;
+      }
+      if (phase === 'results') {
+        const raceSync = res.sync?.race;
+        const results = res.sync?.results;
+        if (raceSync) {
+          cacheRacerMeta(raceSync.field);
+          mergeServerRacers(raceSync.racers);
+          gameState.serverRace = true;
+          gameState.raceFinished = true;
+          gameState.phase = 'race';
+          gameState.raceTime = raceSync.time || 0;
+          if (results) handleMultiplayerRaceFinished(results);
+          showResults();
+        }
+      }
+    }
+
+    function tryReconnectSession() {
+      if (multiplayer.reconnectAttempted) return;
+      const session = loadMultiplayerSession();
+      if (!session?.code || !session?.token || !multiplayer.socket) return;
+      multiplayer.reconnectAttempted = true;
+      multiplayer.socket.emit('room:rejoin', session, (res) => {
+        if (!res?.ok) {
+          clearMultiplayerSession();
+          return;
+        }
+        applyRoomReconnect(res);
+      });
+    }
+
+    function ensureMultiplayerSocket() {
+      if (multiplayer.socket) return multiplayer.socket;
+      if (typeof io === 'undefined') return null;
+      const socket = io();
+      multiplayer.socket = socket;
+      socket.on('connect', () => {
+        multiplayer.connected = true;
+        if (multiplayer.mode === 'solo' && loadMultiplayerSession()) {
+          tryReconnectSession();
+        }
+      });
+      socket.on('disconnect', () => { multiplayer.connected = false; });
+      socket.on('room:updated', (room) => {
+        multiplayer.room = { ...multiplayer.room, ...room };
+        const me = room.players?.find((p) => p.id === multiplayer.playerId);
+        if (me) multiplayer.localReady = !!me.ready;
+        if (gameState.phase === 'lobby') renderLobby();
+        if (gameState.phase === 'training') {
+          syncLocalPlayerFromRoom();
+          renderTrainingRivals();
+          updateTrainingWaitStatus();
+        }
+        if (gameState.phase === 'lineup' && room.field?.length) {
+          buildMultiplayerLineup();
+          renderLineupGrid();
+          updateLineupStartButton();
+        }
+      });
+      socket.on('room:phase', ({ phase }) => {
+        if (phase === 'training' && (gameState.phase === 'lobby' || gameState.phase === 'setup')) {
+          startTraining();
+          return;
+        }
+        if (phase === 'lineup' && (gameState.phase === 'training' || gameState.phase === 'lobby')) {
+          showLineupScreen();
+        }
+      });
+      socket.on('race:started', (data) => {
+        beginMultiplayerRace(data);
+      });
+      socket.on('race:tick', (tick) => {
+        if (gameState.phase === 'race' && gameState.serverRace) {
+          applyServerRaceTick(tick);
+        }
+      });
+      socket.on('race:finished', (data) => {
+        if (gameState.serverRace) {
+          handleMultiplayerRaceFinished(data);
+        }
+      });
+      return socket;
+    }
+
+    function requireOnlineServer() {
+      if (ensureMultiplayerSocket()) return true;
+      setJoinError('Run npm start — online play needs the server.');
+      return false;
+    }
+
+    function createMultiplayerRoom() {
+      if (!requireOnlineServer()) return;
+      multiplayer.socket.emit('room:create', (res) => {
+        if (!res?.ok) {
+          setJoinError(res?.error || 'Could not create room');
+          return;
+        }
+        multiplayer.mode = 'host';
+        multiplayer.playerId = res.playerId;
+        multiplayer.room = res;
+        multiplayer.localReady = false;
+        saveMultiplayerSession(res.code, res.playerId);
+        setJoinError('');
+        goToSetup();
+      });
+    }
+
+    function joinMultiplayerRoom(code) {
+      if (!requireOnlineServer()) return;
+      const clean = (code || '').trim().toUpperCase();
+      if (clean.length !== 6) {
+        setJoinError('Enter a 6-character room code');
+        return;
+      }
+      multiplayer.socket.emit('room:join', { code: clean }, (res) => {
+        if (!res?.ok) {
+          setJoinError(res?.error || 'Could not join room');
+          return;
+        }
+        multiplayer.mode = 'join';
+        multiplayer.playerId = res.playerId;
+        multiplayer.room = res;
+        multiplayer.localReady = false;
+        saveMultiplayerSession(res.code, res.playerId);
+        setJoinError('');
+        document.getElementById('splash-join-panel').classList.add('hidden');
+        goToSetup();
+      });
+    }
+
+    function getRacerChoiceLabel(racerId) {
+      const racer = RACER_CHOICES.find((r) => r.id === racerId);
+      return racer ? racer.label : (racerId || '???').toUpperCase();
+    }
+
+    function lobbyAllReady(room) {
+      const players = room?.players || [];
+      return players.length > 0 && players.every((p) => p.connected && p.ready && p.name);
+    }
+
+    function renderLobby() {
+      const room = multiplayer.room;
+      if (!room) return;
+
+      document.getElementById('lobby-room-code').textContent = room.code || '------';
+
+      const grid = document.getElementById('lobby-grid');
+      grid.innerHTML = '';
+      const players = room.players || [];
+
+      for (let i = 0; i < 6; i++) {
+        const player = players[i];
+        const card = document.createElement('div');
+        card.className = 'lobby-card';
+        if (!player) {
+          card.classList.add('empty');
+          card.innerHTML = '<span class="lobby-slot-label">OPEN</span>';
+        } else {
+          if (player.id === multiplayer.playerId) card.classList.add('self');
+          if (player.ready) card.classList.add('ready');
+          const hostTag = player.isHost ? '<span class="lobby-host">HOST</span>' : '';
+          const readyTag = player.ready
+            ? '<span class="lobby-ready-tag">READY</span>'
+            : '<span class="lobby-wait-tag">...</span>';
+          const name = player.name || 'UNNAMED';
+          card.innerHTML =
+            `${hostTag}${readyTag}` +
+            `<strong>${name.toUpperCase()}</strong>` +
+            `<span>${getRacerChoiceLabel(player.racerId)}</span>`;
+        }
+        grid.appendChild(card);
+      }
+
+      const isHost = room.hostId === multiplayer.playerId;
+      const startBtn = document.getElementById('lobby-start-btn');
+      startBtn.classList.toggle('hidden', !isHost);
+      startBtn.disabled = !lobbyAllReady(room);
+
+      const readyBtn = document.getElementById('lobby-ready-btn');
+      readyBtn.textContent = multiplayer.localReady ? 'UNREADY' : 'READY';
+      readyBtn.classList.toggle('ready-active', multiplayer.localReady);
+
+      const status = document.getElementById('lobby-status');
+      const count = players.length;
+      const readyCount = players.filter((p) => p.ready && p.name).length;
+      if (count < 2) {
+        status.textContent = `Waiting for racers (${count}/6)...`;
+      } else if (readyCount < count) {
+        status.textContent = `${readyCount}/${count} ready — everyone must ready up`;
+      } else if (isHost) {
+        status.textContent = 'All ready! Start training when you are.';
+      } else {
+        status.textContent = 'All ready! Waiting for host...';
+      }
+    }
+
+    function enterLobbyFromSetup() {
+      if (!multiplayer.socket || !multiplayer.room) return;
+      const name = readRacerNameFromInput();
+      const racerId = selectedRacerId;
+      gameState.player.name = name;
+      gameState.player.racerId = racerId;
+      applySelectedRacer(racerId);
+
+      multiplayer.socket.emit('player:profile', { name, racerId }, (res) => {
+        if (!res?.ok) return;
+        gameState.phase = 'lobby';
+        showScreen('lobby-screen');
+        renderLobby();
+      });
+    }
+
+    function toggleLobbyReady() {
+      if (!multiplayer.socket) return;
+      multiplayer.localReady = !multiplayer.localReady;
+      multiplayer.socket.emit('player:ready', { ready: multiplayer.localReady });
+    }
+
+    function hostStartTraining() {
+      if (!multiplayer.socket) return;
+      multiplayer.socket.emit('host:start-training', (res) => {
+        if (!res?.ok) {
+          const status = document.getElementById('lobby-status');
+          if (status) status.textContent = res?.error || 'Could not start training';
+        }
+      });
+    }
+
+    function isMultiplayer() {
+      return multiplayer.mode !== 'solo' && !!multiplayer.socket && !!multiplayer.room;
+    }
+
+    function getLocalRoomPlayer() {
+      return multiplayer.room?.players?.find((p) => p.id === multiplayer.playerId) || null;
+    }
+
+    function syncLocalPlayerFromRoom() {
+      const me = getLocalRoomPlayer();
+      if (!me) return;
+      gameState.player.name = me.name || gameState.player.name;
+      gameState.player.racerId = me.racerId || gameState.player.racerId;
+      gameState.player.stats = { ...me.stats };
+      gameState.player.raceSkill = me.raceSkill || null;
+      gameState.turn = me.turn || gameState.turn;
+      if (me.racerId) applySelectedRacer(me.racerId);
+    }
+
+    function renderTrainingRivals() {
+      const panel = document.getElementById('training-rivals');
+      const list = document.getElementById('training-rivals-list');
+      if (!panel || !list || !isMultiplayer()) {
+        if (panel) panel.classList.add('hidden');
+        return;
+      }
+
+      panel.classList.remove('hidden');
+      list.innerHTML = '';
+      const players = [...(multiplayer.room.players || [])].sort((a, b) => {
+        if (a.id === multiplayer.playerId) return -1;
+        if (b.id === multiplayer.playerId) return 1;
+        return (a.name || '').localeCompare(b.name || '');
+      });
+
+      players.forEach((player) => {
+        const row = document.createElement('div');
+        row.className = 'training-rival-row';
+        if (player.id === multiplayer.playerId) row.classList.add('self');
+        if (player.trainingComplete) row.classList.add('done');
+        const label = player.id === multiplayer.playerId ? 'YOU' : (player.name || 'RACER').toUpperCase();
+        const progress = player.trainingComplete
+          ? 'DONE'
+          : `TURN ${player.turn || player.trainingTurn || 1}/${MAX_TURNS}`;
+        row.innerHTML = `<strong>${label}</strong><span>${progress}</span>`;
+        list.appendChild(row);
+      });
+    }
+
+    function updateTrainingWaitStatus() {
+      const el = document.getElementById('training-wait-status');
+      if (!el || !isMultiplayer()) {
+        if (el) el.classList.add('hidden');
+        return;
+      }
+      const me = getLocalRoomPlayer();
+      const waiting = !!me?.trainingComplete && multiplayer.room?.phase === 'training';
+      el.classList.toggle('hidden', !waiting);
+      if (waiting) setTrainButtonsEnabled(false);
+    }
+
+    function cacheRacerMeta(field) {
+      multiplayer.racerMeta = {};
+      (field || []).forEach((entry) => {
+        multiplayer.racerMeta[entry.id] = entry;
+      });
+    }
+
+    function buildMultiplayerLineup() {
+      const field = multiplayer.room?.field || [];
+      if (!field.length) return;
+
+      const localEntry = field.find((e) => e.playerId === multiplayer.playerId);
+      if (localEntry) {
+        gameState.player.name = localEntry.name;
+        gameState.player.stats = { ...localEntry.stats };
+        gameState.player.raceSkill = localEntry.raceSkill;
+        gameState.player.racerId = localEntry.racerId;
+        applySelectedRacer(localEntry.racerId);
+      }
+
+      gameState.cpus = field
+        .filter((e) => e.playerId !== multiplayer.playerId)
+        .map((e) => ({
+          id: e.id,
+          name: e.name,
+          stats: { ...e.stats },
+          raceSkill: e.raceSkill,
+          racerId: e.racerId,
+          cpuStyleId: e.cpuStyleId,
+          isPlayer: false,
+          isHuman: !!e.isHuman,
+          animOffset: e.animOffset || 0
+        }));
+    }
+
+    function mergeServerRacers(serverRacers) {
+      gameState.racers = (serverRacers || []).map((sr) => {
+        const meta = multiplayer.racerMeta[sr.id] || {};
+        const prev = gameState.racers?.find((r) => r.id === sr.id);
+        return {
+          id: sr.id,
+          playerId: sr.playerId,
+          name: meta.name || 'Racer',
+          stats: meta.stats || { speed: 5, stamina: 5, agility: 5, focus: 5 },
+          raceSkill: meta.raceSkill || null,
+          racerId: meta.racerId || null,
+          cpuStyleId: meta.cpuStyleId || null,
+          isPlayer: sr.playerId === multiplayer.playerId,
+          isHuman: !!meta.isHuman,
+          animOffset: meta.animOffset || 0,
+          lane: sr.lane,
+          position: sr.position,
+          currentSpeed: sr.currentSpeed,
+          finished: sr.finished,
+          finishTime: sr.finishTime,
+          staminaPenalty: sr.staminaPenalty,
+          jumping: sr.jumping,
+          jumpTimer: sr.jumpTimer,
+          activeHurdleIndex: sr.activeHurdleIndex,
+          hurdlesCleared: [...(sr.hurdlesCleared || [])],
+          hurdleRecovering: sr.hurdleRecovering,
+          hurdleRecoveryTimer: sr.hurdleRecoveryTimer,
+          hurdleRecoveryDuration: sr.hurdleRecoveryDuration,
+          hurdleRecoveryTarget: sr.hurdleRecoveryTarget,
+          skillTriggers: prev?.skillTriggers || {},
+          staminaDrain: prev?.staminaDrain || 0,
+          staminaChecked: prev?.staminaChecked || false,
+          passingCooldown: prev?.passingCooldown || 0
+        };
+      });
+    }
+
+    function updateLineupStartButton() {
+      const btn = document.getElementById('lineup-start-btn');
+      const prompt = document.querySelector('.lineup-prompt');
+      if (!btn) return;
+      if (!isMultiplayer()) {
+        btn.disabled = false;
+        btn.textContent = 'START RACE';
+        if (prompt) prompt.textContent = 'PRESS ENTER TO START';
+        return;
+      }
+      const isHost = multiplayer.room?.hostId === multiplayer.playerId;
+      btn.textContent = isHost ? 'START RACE' : 'WAITING FOR HOST...';
+      btn.disabled = !isHost;
+      if (prompt) {
+        prompt.textContent = isHost ? 'HOST: PRESS ENTER TO START' : 'WAITING FOR HOST TO START THE RACE';
+      }
+    }
+
+    function resumeMultiplayerRace(raceSync, toResults) {
+      cacheRacerMeta(raceSync.field);
+      gameState.serverRace = true;
+      mergeServerRacers(raceSync.racers);
+      gameState.raceTime = raceSync.time || 0;
+      gameState.phase = 'race';
+      gameState.raceRunning = !raceSync.finished;
+      gameState.raceFinished = !!raceSync.finished;
+      gameState.resultsDelay = raceSync.finished ? 0 : 0;
+      raceReplay = { frames: [], duration: 0, finalized: false };
+      replaySampleTimer = 0;
+      captureReplayFrame();
+
+      const isHost = multiplayer.room?.hostId === multiplayer.playerId;
+      setReplaySkipVisible(false);
+      setRaceSkipVisible(isHost && gameState.raceRunning);
+      setRaceSpeedControlsVisible(false);
+      stopPreRaceBgm();
+      if (gameState.raceRunning) playRaceBgm();
+
+      showScreen('race-screen');
+      resizeRaceCanvas();
+      updateRaceHUD();
+      drawRace();
+
+      if (raceSync.finished || toResults) {
+        if (raceSync.results) handleMultiplayerRaceFinished(raceSync.results);
+        gameState.raceFinished = true;
+        showResults();
+        return;
+      }
+
+      lastTime = 0;
+      requestAnimationFrame(raceLoop);
+    }
+
+    function beginMultiplayerRace(data) {
+      cacheRacerMeta(data.field);
+      setReplaySkipVisible(false);
+      const isHost = multiplayer.room?.hostId === multiplayer.playerId;
+      setRaceSkipVisible(isHost);
+      setRaceSpeedControlsVisible(false);
+      stopPreRaceBgm();
+      playRaceBgm();
+      raceReplay = { frames: [], duration: 0, finalized: false };
+      replaySampleTimer = 0;
+      gameState.phase = 'race';
+      gameState.serverRace = true;
+      mergeServerRacers(data.racers);
+      gameState.raceRunning = true;
+      gameState.raceFinished = false;
+      gameState.resultsDelay = 0;
+      gameState.raceTime = data.time || 0;
+      const skill = getRaceSkill(gameState.player.raceSkill);
+      gameState.eventLog = skill
+        ? ['The race has begun! Hurdles at 15% & 60% — Agility recovers speed!', `Skill ready: ${skill.name}`]
+        : [`The race has begun! Go ${gameState.player.name}!`, 'Hurdles at 15% & 60% — Agility recovers speed!'];
+      lastTime = 0;
+      showScreen('race-screen');
+      resizeRaceCanvas();
+      captureReplayFrame();
+      updateRaceHUD();
+      requestAnimationFrame(raceLoop);
+    }
+
+    function applyServerRaceTick(tick) {
+      gameState.raceTime = tick.t;
+      mergeServerRacers(tick.racers);
+      if (tick.events?.length) {
+        tick.events.forEach((ev) => {
+          if (!ev.playerId || ev.playerId === multiplayer.playerId) {
+            gameState.eventLog.push(ev.text);
+          }
+        });
+      }
+      recordReplaySample(0.05);
+      if (tick.finished) {
+        gameState.raceRunning = false;
+        gameState.raceFinished = true;
+        gameState.resultsDelay = 2.5;
+        setRaceSkipVisible(false);
+        setRaceSpeedControlsVisible(false);
+        finalizeReplayRecording();
+      }
+      updateRaceHUD();
+    }
+
+    function handleMultiplayerRaceFinished(data) {
+      if (data?.standings?.length) {
+        data.standings.forEach((s) => {
+          const racer = gameState.racers.find((r) => r.id === s.id);
+          if (racer) {
+            racer.finishTime = s.finishTime;
+            racer.finished = true;
+            racer.name = s.name || racer.name;
+          }
+        });
+      }
+      finalizeReplayRecording();
+    }
+
+    function handleSetupAction() {
+      if (multiplayer.mode === 'solo') {
+        startTraining();
+      } else {
+        enterLobbyFromSetup();
+      }
+    }
+
+    function handleEnterKey() {
+      if (gameState.phase === 'setup') {
+        const btn = document.getElementById('start-btn');
+        if (!btn.disabled) handleSetupAction();
+        return;
+      }
+      if (gameState.phase === 'lobby') {
+        const startBtn = document.getElementById('lobby-start-btn');
+        if (startBtn && !startBtn.classList.contains('hidden') && !startBtn.disabled) {
+          hostStartTraining();
+        } else {
+          toggleLobbyReady();
+        }
+        return;
+      }
+      if (gameState.phase === 'lineup') {
+        if (isMultiplayer() && multiplayer.room?.hostId !== multiplayer.playerId) return;
+        startRace();
+      }
+    }
+
+    function loadMusicVolume() {
+      try {
+        const saved = localStorage.getItem(MUSIC_VOLUME_KEY);
+        if (saved !== null) {
+          const v = parseFloat(saved);
+          if (Number.isFinite(v)) return Math.min(1, Math.max(0, v));
+        }
+      } catch (e) {}
+      return DEFAULT_MUSIC_VOLUME;
+    }
+
+    function applyMusicVolume() {
+      if (titleBgm) titleBgm.volume = musicVolume;
+      if (setupBgm) setupBgm.volume = musicVolume;
+      if (trainingBgm) trainingBgm.volume = musicVolume;
+      if (preRaceBgm) preRaceBgm.volume = musicVolume;
+      if (raceBgm) raceBgm.volume = musicVolume;
+      if (resultsBgm) resultsBgm.volume = musicVolume;
+    }
+
+    function setMusicVolume(value) {
+      musicVolume = Math.min(1, Math.max(0, value));
+      try { localStorage.setItem(MUSIC_VOLUME_KEY, String(musicVolume)); } catch (e) {}
+      applyMusicVolume();
+      updateVolumeUI();
+    }
+
+    function updateVolumeUI() {
+      const pct = Math.round(musicVolume * 100);
+      const label = musicVolume <= 0 ? 'MUT' : 'VOL';
+      [
+        ['volume-slider', 'volume-btn'],
+        ['splash-volume-slider', 'splash-volume-btn']
+      ].forEach(([sliderId, btnId]) => {
+        const slider = document.getElementById(sliderId);
+        const btn = document.getElementById(btnId);
+        if (slider) slider.value = pct;
+        if (btn) btn.textContent = label;
+      });
+    }
+
+    function toggleVolumePanel(panelId) {
+      ['volume-panel', 'splash-volume-panel'].forEach((id) => {
+        const panel = document.getElementById(id);
+        if (!panel) return;
+        if (id === panelId) panel.classList.toggle('hidden');
+        else panel.classList.add('hidden');
+      });
+    }
+
+    function bindVolumeControl(btnId, panelId, sliderId) {
+      const btn = document.getElementById(btnId);
+      const slider = document.getElementById(sliderId);
+      if (!btn || !slider) return;
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        toggleVolumePanel(panelId);
+      };
+      slider.oninput = (e) => {
+        setMusicVolume(Number(e.target.value) / 100);
+      };
+    }
+
+    function initVolumeControl() {
+      musicVolume = loadMusicVolume();
+      updateVolumeUI();
+      applyMusicVolume();
+
+      bindVolumeControl('volume-btn', 'volume-panel', 'volume-slider');
+      bindVolumeControl('splash-volume-btn', 'splash-volume-panel', 'splash-volume-slider');
+
+      document.addEventListener('click', (e) => {
+        [
+          ['volume-control', 'volume-panel'],
+          ['splash-volume-control', 'splash-volume-panel']
+        ].forEach(([controlId, panelId]) => {
+          const panel = document.getElementById(panelId);
+          const control = document.getElementById(controlId);
+          if (panel && control && !panel.classList.contains('hidden') && !control.contains(e.target)) {
+            panel.classList.add('hidden');
+          }
+        });
+      });
+    }
+
+    function initTitleBgm() {
+      if (titleBgm) return;
+      titleBgm = new Audio();
+      titleBgm.loop = true;
+      titleBgm.volume = musicVolume;
+      titleBgm.preload = 'auto';
+      let pathIndex = 0;
+      titleBgm.addEventListener('error', () => {
+        pathIndex++;
+        if (pathIndex < TITLE_BGM_PATHS.length) {
+          titleBgm.src = TITLE_BGM_PATHS[pathIndex];
+          titleBgm.load();
+        }
+      });
+      titleBgm.src = TITLE_BGM_PATHS[0];
+    }
+
+    function playTitleBgm() {
+      initTitleBgm();
+      stopSetupBgm();
+      stopTrainingBgm();
+      stopPreRaceBgm();
+      stopRaceBgm();
+      stopResultsBgm();
+      titleBgm.pause();
+      titleBgm.currentTime = 0;
+      const playPromise = titleBgm.play();
+      if (playPromise && typeof playPromise.catch === 'function') {
+        playPromise.catch(() => {});
+      }
+    }
+
+    function stopTitleBgm() {
+      if (!titleBgm) return;
+      titleBgm.pause();
+      titleBgm.currentTime = 0;
+    }
+
+    function initSetupBgm() {
+      if (setupBgm) return;
+      setupBgm = new Audio();
+      setupBgm.loop = true;
+      setupBgm.volume = musicVolume;
+      setupBgm.preload = 'auto';
+      let pathIndex = 0;
+      setupBgm.addEventListener('error', () => {
+        pathIndex++;
+        if (pathIndex < SETUP_BGM_PATHS.length) {
+          setupBgm.src = SETUP_BGM_PATHS[pathIndex];
+          setupBgm.load();
+        }
+      });
+      setupBgm.src = SETUP_BGM_PATHS[0];
+    }
+
+    function playSetupBgm() {
+      stopTitleBgm();
+      stopTrainingBgm();
+      stopPreRaceBgm();
+      stopRaceBgm();
+      stopResultsBgm();
+      initSetupBgm();
+      setupBgm.pause();
+      setupBgm.currentTime = 0;
+      const playPromise = setupBgm.play();
+      if (playPromise && typeof playPromise.catch === 'function') {
+        playPromise.catch(() => {});
+      }
+    }
+
+    function stopSetupBgm() {
+      if (!setupBgm) return;
+      setupBgm.pause();
+      setupBgm.currentTime = 0;
+    }
+
+    function initTrainingBgm() {
+      if (trainingBgm) return;
+      trainingBgm = new Audio();
+      trainingBgm.loop = true;
+      trainingBgm.volume = musicVolume;
+      trainingBgm.preload = 'auto';
+      let pathIndex = 0;
+      trainingBgm.addEventListener('error', () => {
+        pathIndex++;
+        if (pathIndex < TRAINING_BGM_PATHS.length) {
+          trainingBgm.src = TRAINING_BGM_PATHS[pathIndex];
+          trainingBgm.load();
+        }
+      });
+      trainingBgm.src = TRAINING_BGM_PATHS[0];
+    }
+
+    function playTrainingBgm() {
+      stopTitleBgm();
+      stopSetupBgm();
+      stopPreRaceBgm();
+      stopResultsBgm();
+      initTrainingBgm();
+      trainingBgm.pause();
+      trainingBgm.currentTime = 0;
+      const playPromise = trainingBgm.play();
+      if (playPromise && typeof playPromise.catch === 'function') {
+        playPromise.catch(() => {});
+      }
+    }
+
+    function stopTrainingBgm() {
+      if (!trainingBgm) return;
+      trainingBgm.pause();
+      trainingBgm.currentTime = 0;
+    }
+
+    function initPreRaceBgm() {
+      if (preRaceBgm) return;
+      preRaceBgm = new Audio();
+      preRaceBgm.loop = true;
+      preRaceBgm.volume = musicVolume;
+      preRaceBgm.preload = 'auto';
+      let pathIndex = 0;
+      preRaceBgm.addEventListener('error', () => {
+        pathIndex++;
+        if (pathIndex < PRE_RACE_BGM_PATHS.length) {
+          preRaceBgm.src = PRE_RACE_BGM_PATHS[pathIndex];
+          preRaceBgm.load();
+        }
+      });
+      preRaceBgm.src = PRE_RACE_BGM_PATHS[0];
+    }
+
+    function playPreRaceBgm() {
+      stopTitleBgm();
+      stopSetupBgm();
+      stopTrainingBgm();
+      stopRaceBgm();
+      stopResultsBgm();
+      initPreRaceBgm();
+      preRaceBgm.pause();
+      preRaceBgm.currentTime = 0;
+      const playPromise = preRaceBgm.play();
+      if (playPromise && typeof playPromise.catch === 'function') {
+        playPromise.catch(() => {});
+      }
+    }
+
+    function stopPreRaceBgm() {
+      if (!preRaceBgm) return;
+      preRaceBgm.pause();
+      preRaceBgm.currentTime = 0;
+    }
+
+    function initRaceBgm() {
+      if (raceBgm) return;
+      raceBgm = new Audio();
+      raceBgm.loop = true;
+      raceBgm.volume = musicVolume;
+      raceBgm.preload = 'auto';
+      let pathIndex = 0;
+      raceBgm.addEventListener('error', () => {
+        pathIndex++;
+        if (pathIndex < RACE_BGM_PATHS.length) {
+          raceBgm.src = RACE_BGM_PATHS[pathIndex];
+          raceBgm.load();
+        }
+      });
+      raceBgm.src = RACE_BGM_PATHS[0];
+    }
+
+    function playRaceBgm() {
+      stopTitleBgm();
+      stopSetupBgm();
+      stopTrainingBgm();
+      stopPreRaceBgm();
+      stopResultsBgm();
+      initRaceBgm();
+      raceBgm.pause();
+      raceBgm.currentTime = 0;
+      const playPromise = raceBgm.play();
+      if (playPromise && typeof playPromise.catch === 'function') {
+        playPromise.catch(() => {});
+      }
+    }
+
+    function stopRaceBgm() {
+      if (!raceBgm) return;
+      raceBgm.pause();
+      raceBgm.currentTime = 0;
+    }
+
+    function initResultsBgm() {
+      if (resultsBgm) return;
+      resultsBgm = new Audio();
+      resultsBgm.loop = true;
+      resultsBgm.volume = musicVolume;
+      resultsBgm.preload = 'auto';
+      let pathIndex = 0;
+      resultsBgm.addEventListener('error', () => {
+        pathIndex++;
+        if (pathIndex < RESULTS_BGM_PATHS.length) {
+          resultsBgm.src = RESULTS_BGM_PATHS[pathIndex];
+          resultsBgm.load();
+        }
+      });
+      resultsBgm.src = RESULTS_BGM_PATHS[0];
+    }
+
+    function playResultsBgm() {
+      initResultsBgm();
+      stopTitleBgm();
+      stopSetupBgm();
+      stopTrainingBgm();
+      stopPreRaceBgm();
+      stopRaceBgm();
+      resultsBgm.pause();
+      resultsBgm.currentTime = 0;
+      const playPromise = resultsBgm.play();
+      if (playPromise && typeof playPromise.catch === 'function') {
+        playPromise.catch(() => {});
+      }
+    }
+
+    function stopResultsBgm() {
+      if (!resultsBgm) return;
+      resultsBgm.pause();
+      resultsBgm.currentTime = 0;
+    }
+
+    // --- Sprite Sheet ---
+    function loadRacerImage(paths) {
+      return new Promise((resolve) => {
+        let pathIndex = 0;
+
+        function tryNext() {
+          if (pathIndex >= paths.length) {
+            resolve(null);
+            return;
+          }
+
+          const img = new Image();
+          img.onload = () => resolve(img);
+          img.onerror = () => {
+            pathIndex++;
+            tryNext();
+          };
+          img.src = paths[pathIndex];
+        }
+
+        tryNext();
+      });
+    }
+
+    function loadSprites() {
+      return Promise.all(RACER_CHOICES.map(async (racer) => {
+        const img = await loadRacerImage(racer.paths);
+        if (!img) return false;
+        const usedPng = typeof img.src === 'string' && /\.png(\?|$)/i.test(img.src);
+        let processed = img;
+        if (!usedPng) {
+          try {
+            processed = removeSpriteBackground(img);
+          } catch (err) {
+            processed = img;
+          }
+        }
+        racerSpriteCache[racer.id] = { sheet: img, processed };
+        return true;
+      })).then(async (results) => {
+        const loaded = results.some(Boolean);
+        if (loaded) {
+          applySelectedRacer(selectedRacerId);
+          await loadCpuSprites();
+        }
+        return loaded;
+      });
+    }
+
+    function loadCpuSprites() {
+      return Promise.all(CPU_RACER_STYLES.map(async (style) => {
+        const img = await loadRacerImage([style.path]);
+        if (!img) return false;
+        cpuSpriteCache[style.id] = { sheet: img, processed: img };
+        return true;
+      }));
+    }
+
+    function loadTrainingJacksSprite() {
+      return loadRacerImage(['training-jumping-jacks.png', 'training-jumping-jacks.jpg']).then((img) => {
+        if (!img) {
+          trainingJacksReady = false;
+          return false;
+        }
+        const usedPng = typeof img.src === 'string' && /\.png(\?|$)/i.test(img.src);
+        if (usedPng) {
+          trainingJacksSheet = img;
+        } else {
+          try {
+            trainingJacksSheet = removeSpriteBackground(img);
+          } catch (err) {
+            trainingJacksSheet = img;
+          }
+        }
+        trainingJacksReady = !!trainingJacksSheet;
+        return trainingJacksReady;
+      });
+    }
+
+    function loadSelectedRacerId() {
+      try {
+        const saved = localStorage.getItem(RACER_CHOICE_KEY);
+        if (saved && RACER_CHOICES.some(r => r.id === saved)) return saved;
+      } catch (e) {}
+      return 'purple';
+    }
+
+    function applySelectedRacer(racerId) {
+      const racer = RACER_CHOICES.find(r => r.id === racerId) || RACER_CHOICES[0];
+      selectedRacerId = racer.id;
+      currentFrameData = racer.frames;
+      const cached = racerSpriteCache[racer.id];
+      spriteSheet = cached ? cached.sheet : null;
+      processedSheet = cached ? cached.processed : null;
+      spritesReady = !!processedSheet;
+      try { localStorage.setItem(RACER_CHOICE_KEY, selectedRacerId); } catch (e) {}
+      if (gameState.player) gameState.player.racerId = selectedRacerId;
+    }
+
+    function setRacerNameInputFromChoice(racerId) {
+      const racer = RACER_CHOICES.find(r => r.id === racerId) || RACER_CHOICES[0];
+      const input = document.getElementById('racer-name-input');
+      if (input) input.value = racer.label;
+    }
+
+    function selectRacer(racerId) {
+      applySelectedRacer(racerId);
+      setRacerNameInputFromChoice(racerId);
+      renderRacerOptions();
+    }
+
+    function drawSpriteOnSheet(ctx, sheet, frameData, animKey, frameIndex, x, groundY, displayHeight) {
+      if (!sheet || !frameData[animKey]) return;
+      const frames = frameData[animKey];
+      const frame = frames[frameIndex % frames.length];
+      const scale = displayHeight / frame.sh;
+      const dw = frame.sw * scale;
+      const feetFromTop = frame.feet - frame.sy + 1;
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(
+        sheet,
+        frame.sx, frame.sy, frame.sw, frame.sh,
+        x - dw / 2, groundY - feetFromTop * scale,
+        dw, frame.sh * scale
+      );
+    }
+
+    function renderRacerOptions() {
+      const container = document.getElementById('racer-options');
+      if (!container) return;
+      container.innerHTML = '';
+
+      RACER_CHOICES.forEach((racer) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'racer-option' + (racer.id === selectedRacerId ? ' selected' : '');
+        btn.title = racer.label;
+
+        const portrait = document.createElement('img');
+        portrait.className = 'racer-portrait';
+        portrait.alt = racer.label;
+        portrait.src = racer.portraitPath;
+        portrait.width = 72;
+        portrait.height = 72;
+
+        const label = document.createElement('span');
+        label.textContent = racer.label;
+
+        btn.appendChild(portrait);
+        btn.appendChild(label);
+        btn.onclick = () => selectRacer(racer.id);
+        container.appendChild(btn);
+      });
+    }
+
+    function fillEnclosedHoles(data, w, h) {
+      for (let pass = 0; pass < 4; pass++) {
+        for (let y = 1; y < h - 1; y++) {
+          for (let x = 1; x < w - 1; x++) {
+            const i = (y * w + x) * 4;
+            if (data[i + 3] > 128) continue;
+            let count = 0;
+            let r = 0;
+            let g = 0;
+            let b = 0;
+            const neighbors = [
+              ((y - 1) * w + x) * 4,
+              ((y + 1) * w + x) * 4,
+              (y * w + (x - 1)) * 4,
+              (y * w + (x + 1)) * 4
+            ];
+            neighbors.forEach((j) => {
+              if (data[j + 3] > 128) {
+                count++;
+                r += data[j];
+                g += data[j + 1];
+                b += data[j + 2];
+              }
+            });
+            if (count >= 3) {
+              data[i] = Math.round(r / count);
+              data[i + 1] = Math.round(g / count);
+              data[i + 2] = Math.round(b / count);
+              data[i + 3] = 255;
+            }
+          }
+        }
+      }
+    }
+
+    function removeSpriteBackground(img, tolerance = 50) {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+      try {
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+        const w = canvas.width;
+        const h = canvas.height;
+        const bg = [data[0], data[1], data[2]];
+        const isBg = (px) => {
+          const i = px * 4;
+          const diff = Math.abs(data[i] - bg[0])
+            + Math.abs(data[i + 1] - bg[1])
+            + Math.abs(data[i + 2] - bg[2]);
+          return diff < tolerance;
+        };
+        const remove = new Uint8Array(w * h);
+        const queue = [];
+        const tryBg = (x, y) => {
+          const px = y * w + x;
+          if (remove[px] || !isBg(px)) return;
+          remove[px] = 1;
+          queue.push(px);
+        };
+        for (let x = 0; x < w; x++) {
+          tryBg(x, 0);
+          tryBg(x, h - 1);
+        }
+        for (let y = 0; y < h; y++) {
+          tryBg(0, y);
+          tryBg(w - 1, y);
+        }
+        while (queue.length) {
+          const px = queue.pop();
+          const x = px % w;
+          const y = (px / w) | 0;
+          if (x > 0) tryBg(x - 1, y);
+          if (x < w - 1) tryBg(x + 1, y);
+          if (y > 0) tryBg(x, y - 1);
+          if (y < h - 1) tryBg(x, y + 1);
+        }
+        for (let px = 0; px < w * h; px++) {
+          if (remove[px]) data[px * 4 + 3] = 0;
+        }
+        fillEnclosedHoles(data, w, h);
+        ctx.putImageData(imageData, 0, 0);
+        return canvas;
+      } catch (err) {
+        return img;
+      }
+    }
+
+    function getRacerSpriteBundle(racer) {
+      if (racer.isPlayer || racer.racerId) {
+        const choice = RACER_CHOICES.find(r => r.id === (racer.racerId || selectedRacerId)) || RACER_CHOICES[0];
+        const cached = racerSpriteCache[choice.id];
+        return { sheet: cached?.processed || null, frameData: choice.frames };
+      }
+      const style = CPU_RACER_STYLES.find(s => s.id === racer.cpuStyleId) || CPU_RACER_STYLES[0];
+      const cached = cpuSpriteCache[style.id];
+      if (cached?.processed) {
+        return { sheet: cached.processed, frameData: FRAME_DATA_YELLOW };
+      }
+      const fallback = racerSpriteCache.yellow;
+      return { sheet: fallback?.processed || null, frameData: FRAME_DATA_YELLOW };
+    }
+
+    function getRaceFieldSize() {
+      return RACE_LANE_COUNT;
+    }
+
+    function isHurdleSkyPixel(r, g, b) {
+      if (b >= 168 && g >= 125 && r <= 145 && b > r + 35 && b > g + 15) return true;
+      return Math.abs(r - 74) + Math.abs(g - 178) + Math.abs(b - 231) < 65;
+    }
+
+    function removeHurdleBackground(img) {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+      try {
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+        const w = canvas.width;
+        const h = canvas.height;
+
+        for (let i = 0; i < data.length; i += 4) {
+          if (isHurdleSkyPixel(data[i], data[i + 1], data[i + 2])) {
+            data[i + 3] = 0;
+          }
+        }
+
+        // Remove blue fringe pixels bordering transparency.
+        for (let y = 0; y < h; y++) {
+          for (let x = 0; x < w; x++) {
+            const i = (y * w + x) * 4;
+            if (data[i + 3] === 0) continue;
+            let transparentNeighbors = 0;
+            for (let oy = -1; oy <= 1; oy++) {
+              for (let ox = -1; ox <= 1; ox++) {
+                if (!ox && !oy) continue;
+                const nx = x + ox;
+                const ny = y + oy;
+                if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+                const ni = (ny * w + nx) * 4;
+                if (data[ni + 3] === 0) transparentNeighbors++;
+              }
+            }
+            if (transparentNeighbors >= 3 && isHurdleSkyPixel(data[i], data[i + 1], data[i + 2])) {
+              data[i + 3] = 0;
+            }
+          }
+        }
+
+        ctx.putImageData(imageData, 0, 0);
+        return canvas;
+      } catch (err) {
+        return img;
+      }
+    }
+
+    function enableStartButton(loaded) {
+      const btn = document.getElementById('start-btn');
+      btn.disabled = false;
+      updateSetupStartButton();
+      if (!loaded) console.warn('Sprites unavailable; game will run without character art.');
+    }
+
+    function getAnimFrame(animKey, time, offset = 0, speedMod = 1, frameData = currentFrameData) {
+      const frames = frameData[animKey];
+      if (!frames || !frames.length) return 0;
+      const mod = Number.isFinite(speedMod) ? speedMod : 1;
+      const fps = (ANIMATIONS[animKey]?.fps || 6) * mod;
+      return Math.floor((time + offset) * fps) % frames.length;
+    }
+
+    function getRunPhase(animKey, frameIndex, frameData = currentFrameData) {
+      const frames = frameData[animKey];
+      if (!frames || !frames.length) return 0;
+      return (frameIndex % frames.length) / frames.length;
+    }
+
+    function drawDustPuff(ctx, x, y, scale) {
+      const s = Math.max(1, scale * 0.35);
+      ctx.fillStyle = 'rgba(160, 120, 70, 0.55)';
+      ctx.fillRect(x - 4 * s, y - 2 * s, 3 * s, 2 * s);
+      ctx.fillRect(x - 8 * s, y - 1 * s, 2 * s, 1.5 * s);
+      ctx.fillStyle = 'rgba(196, 150, 90, 0.4)';
+      ctx.fillRect(x - 12 * s, y, 2 * s, s);
+    }
+
+    function drawSpriteFrame(ctx, x, groundY, animKey, frameIndex, displayHeight, rotation = 0, sheet = processedSheet, frameData = currentFrameData) {
+      if (!sheet || !frameData?.[animKey]) return { height: displayHeight, top: groundY - displayHeight };
+      const frames = frameData[animKey];
+      const frame = frames[frameIndex % frames.length];
+      const scale = displayHeight / frame.sh;
+      const dw = frame.sw * scale;
+      const dh = frame.sh * scale;
+      const feetFromTop = frame.feet - frame.sy + 1;
+      const isRunning = animKey === 'runFull' || animKey === 'runStart';
+
+      let bobY = 0;
+      let lean = 0;
+      let scaleX = 1;
+      let scaleY = 1;
+      if (isRunning) {
+        const phase = getRunPhase(animKey, frameIndex, frameData) * Math.PI * 2;
+        bobY = Math.sin(phase) * 2.5 * scale;
+        lean = Math.sin(phase) * 0.06;
+        scaleY = 1 + Math.sin(phase * 2) * 0.06;
+        scaleX = 1 - Math.sin(phase * 2) * 0.04;
+      }
+
+      ctx.save();
+      ctx.translate(x, groundY - bobY);
+      ctx.rotate(rotation + lean);
+      ctx.scale(scaleX, scaleY);
+      ctx.imageSmoothingEnabled = false;
+      const centerAnchor = isRunning || animKey === 'portrait' || animKey === 'idle';
+      const anchorX = centerAnchor ? -dw / 2 : 0;
+      ctx.drawImage(
+        sheet,
+        frame.sx, frame.sy, frame.sw, frame.sh,
+        anchorX, -feetFromTop * scale, dw, dh
+      );
+
+      if (isRunning && frameIndex % 2 === 0) {
+        drawDustPuff(ctx, -dw * 0.12, -scale * 2, scale);
+      }
+      ctx.restore();
+      return { height: dh, top: groundY - bobY - dh };
+    }
+
+    // Side-view: stadium sky/crowd + scrolling lane strip (track-lanes.png)
+    const LANE_CENTERS_NORM = [0.0839, 0.2487, 0.4154, 0.582, 0.7487, 0.9141];
+
+    const TRACK_LAYOUT = {
+      lanes: RACE_LANE_COUNT,
+      laneStripScreenFrac: 0.38,
+      bgCropFrac: 0.65,
+      scrollTilesPerLap: 0,
+      startX: 0.10,
+      finishX: 0.88
+    };
+
+    const TRACK_DEBUG = new URLSearchParams(location.search).has('trackDebug');
+
+    const TRACK_LANE_PATHS = [
+      'track-lanes.png',
+      'Flat track.png'
+    ];
+
+    const TRACK_BG_PATHS = [
+      'side-track.jpg',
+      typeof TRACK_DATA_URL !== 'undefined' ? TRACK_DATA_URL : null,
+      'stadium-track.jpg'
+    ].filter(Boolean);
+
+    function loadImageFromPaths(paths) {
+      return new Promise((resolve) => {
+        let pathIndex = 0;
+        function tryNext() {
+          if (pathIndex >= paths.length) {
+            resolve(null);
+            return;
+          }
+          const img = new Image();
+          img.onload = () => resolve(img);
+          img.onerror = () => {
+            pathIndex++;
+            tryNext();
+          };
+          img.src = paths[pathIndex];
+        }
+        tryNext();
+      });
+    }
+
+    function loadTrack() {
+      return Promise.all([
+        loadImageFromPaths(TRACK_LANE_PATHS),
+        loadImageFromPaths(TRACK_BG_PATHS)
+      ]).then(([laneImg, bgImg]) => {
+        trackLaneImage = laneImg;
+        trackBgImage = bgImg;
+        trackReady = !!laneImg;
+        return !!laneImg;
+      });
+    }
+
+    function loadHurdle() {
+      return new Promise((resolve) => {
+        let pathIndex = 0;
+
+        function tryNext() {
+          if (pathIndex >= HURDLE_PATHS.length) {
+            resolve(false);
+            return;
+          }
+
+          const path = HURDLE_PATHS[pathIndex];
+          const img = new Image();
+          img.onload = () => {
+            hurdleImage = img;
+            const isPreCut = path.endsWith('hurdle-sprite.png');
+            const isTransparentAsset = path.endsWith('.png');
+
+            if (isPreCut) {
+              processedHurdle = img;
+            } else if (isTransparentAsset) {
+              processedHurdle = img;
+            } else {
+              try {
+                processedHurdle = removeHurdleBackground(img);
+              } catch (err) {
+                processedHurdle = img;
+              }
+            }
+
+            hurdleReady = true;
+            resolve(true);
+          };
+          img.onerror = () => {
+            pathIndex++;
+            tryNext();
+          };
+          img.src = path;
+        }
+
+        tryNext();
+      });
+    }
+
+    function updateTrackDrawRect(W, H) {
+      const dh = H * TRACK_LAYOUT.laneStripScreenFrac;
+      const dy = H - dh;
+      if (!trackLaneImage) {
+        trackDrawRect = { dx: 0, dy, dw: W, dh, tileW: W };
+        return;
+      }
+      const dw = dh * (trackLaneImage.width / trackLaneImage.height);
+      trackDrawRect = { dx: 0, dy, dw, dh, tileW: dw };
+    }
+
+    function getTrackScrollPx(lapProgress) {
+      const tileW = trackDrawRect.tileW || trackDrawRect.dw;
+      return lapProgress * tileW * TRACK_LAYOUT.scrollTilesPerLap;
+    }
+
+    function drawTrackBackground(ctx, W, H) {
+      const laneTop = trackDrawRect.dy;
+      ctx.fillStyle = '#5eb5e8';
+      ctx.fillRect(0, 0, W, laneTop);
+
+      if (!trackBgImage) return;
+
+      const cropH = Math.floor(trackBgImage.height * TRACK_LAYOUT.bgCropFrac);
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(
+        trackBgImage,
+        0, 0, trackBgImage.width, cropH,
+        0, 0, W, laneTop
+      );
+    }
+
+    function drawScrollingTrack(ctx, scrollPx, W) {
+      if (!trackLaneImage) return;
+      const { dy, dw, dh } = trackDrawRect;
+      const offset = scrollPx % dw;
+      let x = -offset;
+      while (x < W + dw) {
+        ctx.drawImage(trackLaneImage, x, dy, dw, dh);
+        x += dw;
+      }
+    }
+
+    function getLaneGroundY(lane) {
+      const { dy, dh } = trackDrawRect;
+      const norm = LANE_CENTERS_NORM[lane] ?? ((lane + 0.5) / TRACK_LAYOUT.lanes);
+      return dy + dh * norm;
+    }
+
+    function getRaceProgress(position) {
+      return Math.min(1, position / RACE_LENGTH);
+    }
+
+    function getProgressScreenX(progress, W) {
+      const startX = W * TRACK_LAYOUT.startX;
+      const finishX = W * TRACK_LAYOUT.finishX;
+      return startX + progress * (finishX - startX);
+    }
+
+    function getRacerScreenPoint(racer, W) {
+      const progress = getRaceProgress(racer.position);
+      const x = getProgressScreenX(progress, W);
+      return { x, y: getLaneGroundY(racer.lane), tangent: 0 };
+    }
+
+    function drawProceduralHurdle(ctx, x, groundY, hurdleH) {
+      const postW = Math.max(3, Math.floor(hurdleH * 0.12));
+      const barH = Math.max(2, Math.floor(hurdleH * 0.1));
+      const span = postW * 2.5;
+      const topY = groundY - hurdleH;
+
+      ctx.fillStyle = '#f2f2f2';
+      ctx.fillRect(x - span, topY, postW, hurdleH);
+      ctx.fillRect(x + span - postW, topY, postW, hurdleH);
+      ctx.fillStyle = '#ff6eb4';
+      ctx.fillRect(x - span, topY, span * 2, barH);
+      ctx.fillStyle = '#ffd700';
+      ctx.fillRect(x - span + postW, topY, span * 2 - postW * 2, barH);
+      ctx.fillStyle = '#8b2252';
+      ctx.fillRect(x - span, groundY - 2, span * 2, 2);
+    }
+
+    function getRunnerSpriteHeight() {
+      return Math.max(20, Math.min(44, trackDrawRect.dh * 0.20));
+    }
+
+    function drawHurdles(ctx, W, spriteH) {
+      const displayH = spriteH;
+      const { sx, sy, sw, sh, feetX, feetY } = HURDLE_SPRITE;
+      const footOffsetX = feetX - sx;
+      const footOffsetY = feetY - sy;
+      const scale = displayH / sh;
+      const displayW = sw * scale * HURDLE_WIDTH_SCALE;
+
+      ctx.imageSmoothingEnabled = false;
+
+      HURDLE_PROGRESSES.forEach((progress) => {
+        const x = Math.floor(getProgressScreenX(progress, W));
+        for (let lane = 0; lane < TRACK_LAYOUT.lanes; lane++) {
+          const groundY = Math.floor(getLaneGroundY(lane));
+
+          if (hurdleReady && processedHurdle) {
+            ctx.drawImage(
+              processedHurdle,
+              sx, sy, sw, sh,
+              x - footOffsetX * scale * HURDLE_WIDTH_SCALE,
+              groundY - footOffsetY * scale,
+              displayW,
+              displayH
+            );
+          } else {
+            drawProceduralHurdle(ctx, x, groundY, displayH);
+          }
+        }
+      });
+    }
+
+    function drawFinishLine(ctx, W) {
+      const x = Math.floor(W * TRACK_LAYOUT.finishX);
+      const top = getLaneGroundY(0) - trackDrawRect.dh * 0.10;
+      const bot = getLaneGroundY(TRACK_LAYOUT.lanes - 1) + trackDrawRect.dh * 0.03;
+      const size = 8;
+      for (let py = top; py < bot; py += size) {
+        for (let row = 0; row < 2; row++) {
+          const y = py + row * (size / 2);
+          for (let col = 0; col < 2; col++) {
+            const px = x + col * (size / 2);
+            const isDark = ((py / size) + col + row) % 2 === 0;
+            ctx.fillStyle = isDark ? '#111' : '#fff';
+            ctx.fillRect(px, y, size / 2, size / 2);
+          }
+        }
+      }
+    }
+
+    function resizeRaceCanvas() {
+      const screen = document.getElementById('screen');
+      const raceScreen = document.getElementById('race-screen');
+      const canvas = document.getElementById('race-canvas');
+      const hud = raceScreen.querySelector('.race-hud');
+
+      if (raceScreen.classList.contains('hidden')) return;
+
+      const w = screen.clientWidth;
+      const hudH = hud.offsetHeight;
+      const h = Math.max(180, screen.clientHeight - hudH);
+
+      canvas.width = w;
+      canvas.height = h;
+      canvas.style.width = w + 'px';
+      canvas.style.height = h + 'px';
+
+      updateTrackDrawRect(w, h);
+
+      if (gameState.phase === 'race') {
+        drawRace();
+      } else if (gameState.phase === 'replay') {
+        drawRace(gameState.replayRacers);
+      }
+    }
+
+    function resizeLayout() {
+      resizeRaceCanvas();
+    }
+
+    function drawTrackDebugOverlay(ctx, W) {
+      if (!TRACK_DEBUG) return;
+      const laneColors = ['#ff6eb4', '#ffd700', '#7fd7ff', '#9fff7f', '#ffb347', '#d8a8ff'];
+      for (let lane = 0; lane < TRACK_LAYOUT.lanes; lane++) {
+        const y = getLaneGroundY(lane);
+        ctx.strokeStyle = laneColors[lane];
+        ctx.lineWidth = 1.5;
+        ctx.globalAlpha = 0.85;
+        ctx.beginPath();
+        ctx.moveTo(W * TRACK_LAYOUT.startX, y);
+        ctx.lineTo(W * TRACK_LAYOUT.finishX, y);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    function drawFallbackTrack(ctx, W, H) {
+      updateTrackDrawRect(W, H);
+      drawTrackBackground(ctx, W, H);
+      const { dy, dh } = trackDrawRect;
+      ctx.fillStyle = '#9a4a42';
+      ctx.fillRect(0, dy, W, dh);
+      for (let lane = 0; lane < TRACK_LAYOUT.lanes; lane++) {
+        const y = getLaneGroundY(lane);
+        ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(W, y);
+        ctx.stroke();
+      }
+    }
+
+    function getRaceClock() {
+      if (gameState.phase === 'replay') return gameState.replayTime || 0;
+      return gameState.raceTime || 0;
+    }
+
+    function isRacerJumping(racer) {
+      if (racer.finished || allHurdlesCleared(racer)) return false;
+      if (racer.jumping) return true;
+      return !!getActiveHurdleZone(racer);
+    }
+
+    function getJumpProgress(racer) {
+      if (Number.isFinite(racer.jumpTimer)) {
+        return Math.min(1, racer.jumpTimer / HURDLE_JUMP_DURATION);
+      }
+      const zone = getActiveHurdleZone(racer);
+      if (!zone) return 0;
+      return Math.min(1, Math.max(0,
+        (racer.position - zone.jumpStart) / (zone.clearPos - zone.jumpStart)
+      ));
+    }
+
+    function getJumpLift(racer, spriteH) {
+      const progress = getJumpProgress(racer);
+      return Math.sin(progress * Math.PI) * spriteH * HURDLE_JUMP_LIFT;
+    }
+
+    function getJumpFrameIndex(racer, frameData) {
+      const frames = frameData?.jump;
+      if (!frames || !frames.length) return 0;
+      const progress = getJumpProgress(racer);
+      if (frames.length === 1) return 0;
+      return Math.min(frames.length - 1, Math.floor(progress * frames.length));
+    }
+
+    function getRacerAnimation(racer) {
+      if (racer.finished) return 'finish';
+      if (isRacerJumping(racer)) return 'jump';
+      if (getRaceClock() < 2.5 && racer.position < LAP_LENGTH * 0.05) return 'runStart';
+      return 'runFull';
+    }
+
+    function getRacerAnimSpeed(racer) {
+      if (racer.finished) return 0;
+      const speed = racer.currentSpeed;
+      if (!Number.isFinite(speed)) return 1.1;
+      return Math.min(1.6, Math.max(0.9, speed / 14));
+    }
+
+    function getRacerFrame(racer, animKey, speedMod) {
+      if (racer.finished) return 0;
+      if (animKey === 'finish') return 0;
+      const bundle = getRacerSpriteBundle(racer);
+      if (animKey === 'jump') return getJumpFrameIndex(racer, bundle.frameData);
+      return getAnimFrame(animKey, globalAnimTime, racer.animOffset, speedMod, bundle.frameData);
+    }
+
+    function loadTitleArt() {
+      const img = document.getElementById('splash-art');
+      if (!img) return Promise.resolve(false);
+
+      return new Promise((resolve) => {
+        let pathIndex = 0;
+
+        function tryNext() {
+          if (pathIndex >= TITLE_ART_PATHS.length) {
+            resolve(false);
+            return;
+          }
+
+          img.onload = () => resolve(true);
+          img.onerror = () => {
+            pathIndex++;
+            tryNext();
+          };
+          img.src = TITLE_ART_PATHS[pathIndex];
+        }
+
+        tryNext();
+      });
+    }
+
+    function drawPortrait() {
+      const canvas = document.getElementById('portrait-canvas');
+      const ctx = canvas.getContext('2d');
+      ctx.imageSmoothingEnabled = false;
+      ctx.fillStyle = '#1a0a2e';
+      ctx.fillRect(0, 0, 96, 96);
+      if (spritesReady) {
+        drawSpriteFrame(ctx, 48, 88, 'portrait', 0, 72);
+      }
+    }
+
+    // --- Training Phase ---
+    function renderStats() {
+      const panel = document.getElementById('stats-panel');
+      panel.innerHTML = '';
+      STAT_NAMES.forEach(stat => {
+        const val = gameState.player.stats[stat];
+        const pct = Math.min(100, (val / 25) * 100);
+        panel.innerHTML += `
+          <div class="stat-row">
+            <span class="stat-label">${STAT_LABELS[stat]}</span>
+            <div class="stat-bar-bg"><div class="stat-bar-fill" style="width:${pct}%"></div></div>
+            <span class="stat-value">${val}</span>
+          </div>`;
+      });
+    }
+
+    function setTrainButtonsEnabled(enabled) {
+      document.querySelectorAll('.train-btn').forEach((btn) => {
+        btn.disabled = !enabled;
+      });
+    }
+
+    function renderTrainButtons() {
+      const container = document.getElementById('train-buttons');
+      container.innerHTML = '';
+      STAT_NAMES.forEach(stat => {
+        const btn = document.createElement('button');
+        btn.className = 'train-btn';
+        btn.textContent = `+ ${STAT_LABELS[stat]}`;
+        btn.onclick = () => trainStat(stat);
+        container.appendChild(btn);
+      });
+      setTrainButtonsEnabled(!trainingModalActive);
+    }
+
+    function sanitizeRacerName(raw) {
+      const trimmed = (raw || '').trim().slice(0, MAX_RACER_NAME_LEN);
+      return trimmed || DEFAULT_RACER_NAME;
+    }
+
+    function readRacerNameFromInput() {
+      const input = document.getElementById('racer-name-input');
+      const name = sanitizeRacerName(input ? input.value : '');
+      if (input) input.value = name;
+      return name;
+    }
+
+    function updatePortraitName() {
+      const el = document.getElementById('portrait-name');
+      if (el) el.textContent = gameState.player.name.toUpperCase();
+    }
+
+    function startTraining() {
+      gameState.phase = 'training';
+      if (isMultiplayer()) {
+        syncLocalPlayerFromRoom();
+      } else {
+        gameState.turn = 1;
+        gameState.player.name = readRacerNameFromInput();
+        gameState.player.stats = { speed: 5, stamina: 5, agility: 5, focus: 5 };
+        gameState.player.raceSkill = null;
+        gameState.player.racerId = selectedRacerId;
+        applySelectedRacer(selectedRacerId);
+      }
+      showScreen('training-screen');
+      updateTrainingUI();
+      drawPortrait();
+      renderTrainingRivals();
+      updateTrainingWaitStatus();
+      setTrainButtonsEnabled(!getLocalRoomPlayer()?.trainingComplete);
+      playTrainingBgm();
+    }
+
+    function getRaceSkill(id) {
+      return RACE_SKILLS.find(skill => skill.id === id) || null;
+    }
+
+    function updateSkillDisplay() {
+      const el = document.getElementById('skill-picked');
+      const skill = getRaceSkill(gameState.player.raceSkill);
+      if (!skill) {
+        el.classList.add('hidden');
+        el.textContent = '';
+        return;
+      }
+      el.classList.remove('hidden');
+      el.innerHTML = `<strong>RACE SKILL</strong><br>${skill.name} — ${skill.description}`;
+    }
+
+    function updateTrainingUI() {
+      document.getElementById('turn-display').textContent = `TURN ${gameState.turn} / ${MAX_TURNS}`;
+      updatePortraitName();
+      renderStats();
+      updateSkillDisplay();
+    }
+
+    function drawTrainingSparkles(ctx, W, H, time) {
+      const sparks = [
+        [0.18, 0.42], [0.32, 0.38], [0.55, 0.35], [0.72, 0.4], [0.85, 0.45]
+      ];
+      sparks.forEach(([nx, ny], i) => {
+        if (Math.sin(time * 6 + i * 1.7) < 0.2) return;
+        const sx = nx * W + Math.sin(time * 4 + i) * 6;
+        const sy = ny * H + Math.cos(time * 5 + i) * 4;
+        ctx.fillStyle = i % 2 ? '#ffd700' : '#ff6eb4';
+        ctx.fillRect(sx, sy, 3, 3);
+        ctx.fillRect(sx + 4, sy - 2, 2, 2);
+      });
+    }
+
+    function drawTrainingGymBg(ctx, W, H) {
+      const floorY = Math.floor(H * 0.78);
+      const grad = ctx.createLinearGradient(0, 0, 0, H);
+      grad.addColorStop(0, '#3d2a6e');
+      grad.addColorStop(0.5, '#2d1b4e');
+      grad.addColorStop(1, '#1a0a2e');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = '#4a3568';
+      ctx.fillRect(0, floorY, W, H - floorY);
+      ctx.fillStyle = 'rgba(255, 110, 180, 0.18)';
+      for (let i = 0; i < 5; i++) {
+        ctx.fillRect(i * (W / 5), floorY, 2, H - floorY);
+      }
+    }
+
+    function drawTrainingTrackBg(ctx, W, H) {
+      const sky = ctx.createLinearGradient(0, 0, 0, H);
+      sky.addColorStop(0, '#5eb5e8');
+      sky.addColorStop(0.55, '#8ec8f0');
+      sky.addColorStop(1, '#3d2a6e');
+      ctx.fillStyle = sky;
+      ctx.fillRect(0, 0, W, H);
+      const trackTop = Math.floor(H * 0.62);
+      ctx.fillStyle = '#9a4a42';
+      ctx.fillRect(0, trackTop, W, H - trackTop);
+      ctx.fillStyle = 'rgba(255,255,255,0.28)';
+      for (let lane = 0; lane < 3; lane++) {
+        ctx.fillRect(0, trackTop + 8 + lane * 14, W, 2);
+      }
+      return trackTop;
+    }
+
+    function drawTrainingModal() {
+      if (!trainingModalActive || !trainingAnimState) return;
+
+      const canvas = document.getElementById('training-anim-canvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const W = canvas.width;
+      const H = canvas.height;
+      const elapsed = (performance.now() - trainingAnimState.startTime) / 1000;
+      const duration = trainingAnimState.duration / 1000;
+
+      if (elapsed >= duration) {
+        closeTrainingModal();
+        return;
+      }
+
+      ctx.imageSmoothingEnabled = false;
+
+      if (trainingAnimState.trainingSheet) {
+        drawTrainingGymBg(ctx, W, H);
+        const floorY = Math.floor(H * 0.78);
+        const spriteH = 150;
+        const x = W / 2;
+        const groundY = floorY + 8;
+
+        if (trainingJacksReady && trainingJacksSheet) {
+          const frame = getAnimFrame(
+            trainingAnimState.animKey,
+            elapsed,
+            0,
+            trainingAnimState.speedMod,
+            FRAME_DATA_JUMPING_JACKS
+          );
+          drawSpriteFrame(
+            ctx, x, groundY, trainingAnimState.animKey, frame, spriteH, 0,
+            trainingJacksSheet, FRAME_DATA_JUMPING_JACKS
+          );
+        }
+
+        drawTrainingSparkles(ctx, W, H, elapsed);
+        ctx.fillStyle = 'rgba(26, 10, 46, 0.35)';
+        ctx.fillRect(0, 0, W, 18);
+        ctx.fillStyle = '#ffd700';
+        ctx.font = '8px "Press Start 2P"';
+        ctx.textAlign = 'center';
+        ctx.fillText('JUMPING JACKS', W / 2, 14);
+        ctx.textAlign = 'left';
+        return;
+      }
+
+      if (trainingAnimState.centered) {
+        drawTrainingGymBg(ctx, W, H);
+        const bundle = getRacerSpriteBundle({ isPlayer: true, racerId: selectedRacerId });
+        const spriteH = 132;
+        const x = W / 2;
+        const groundY = Math.floor(H * 0.78) + 8;
+        const breathe = Math.sin(elapsed * 2.2) * 2;
+
+        if (bundle.sheet && bundle.frameData?.[trainingAnimState.animKey]) {
+          const frame = getAnimFrame(
+            trainingAnimState.animKey,
+            elapsed,
+            0,
+            trainingAnimState.speedMod,
+            bundle.frameData
+          );
+          drawSpriteFrame(
+            ctx, x, groundY - breathe, trainingAnimState.animKey, frame, spriteH, 0,
+            bundle.sheet, bundle.frameData
+          );
+        }
+
+        drawTrainingSparkles(ctx, W, H, elapsed);
+        ctx.fillStyle = 'rgba(26, 10, 46, 0.35)';
+        ctx.fillRect(0, 0, W, 18);
+        ctx.fillStyle = '#7fd7ff';
+        ctx.font = '8px "Press Start 2P"';
+        ctx.textAlign = 'center';
+        ctx.fillText('FOCUS', W / 2, 14);
+        ctx.textAlign = 'left';
+        return;
+      }
+
+      const trackTop = drawTrainingTrackBg(ctx, W, H);
+      const progress = Math.min(1, elapsed / duration);
+      const bundle = getRacerSpriteBundle({ isPlayer: true, racerId: selectedRacerId });
+      const spriteH = 96;
+      const groundY = trackTop + 28;
+      const x = W * 0.2 + progress * W * 0.55;
+
+      if (bundle.sheet && bundle.frameData?.[trainingAnimState.animKey]) {
+        const frame = getAnimFrame(
+          trainingAnimState.animKey,
+          elapsed,
+          0,
+          trainingAnimState.speedMod,
+          bundle.frameData
+        );
+        drawSpriteFrame(
+          ctx, x, groundY, trainingAnimState.animKey, frame, spriteH, 0,
+          bundle.sheet, bundle.frameData
+        );
+      }
+
+      drawTrainingSparkles(ctx, W, H, elapsed);
+      ctx.fillStyle = 'rgba(26, 10, 46, 0.35)';
+      ctx.fillRect(0, 0, W, 18);
+      ctx.fillStyle = '#ffd700';
+      ctx.font = '8px "Press Start 2P"';
+      ctx.textAlign = 'center';
+      ctx.fillText('NYA~!', W / 2, 14);
+      ctx.textAlign = 'left';
+    }
+
+    function closeTrainingModal() {
+      if (!trainingModalActive) return;
+      trainingModalActive = false;
+      const callback = trainingAnimState?.callback;
+      trainingAnimState = null;
+      document.getElementById('training-modal').classList.add('hidden');
+      setTrainButtonsEnabled(true);
+      if (callback) callback();
+    }
+
+    function showTrainingModal(stat, callback) {
+      const config = TRAINING_ANIM[stat] || TRAINING_ANIM.speed;
+      const modal = document.getElementById('training-modal');
+      document.getElementById('training-modal-title').textContent = config.label;
+      document.getElementById('training-modal-msg').textContent = pickTrainingMessage(stat);
+      document.getElementById('training-modal-stat').textContent = `${STAT_LABELS[stat]} +1`;
+
+      trainingAnimState = {
+        stat,
+        animKey: config.animKey,
+        speedMod: config.speedMod,
+        trainingSheet: !!config.trainingSheet,
+        centered: !!config.centered,
+        startTime: performance.now(),
+        duration: TRAINING_MODAL_MS,
+        callback
+      };
+      trainingModalActive = true;
+      setTrainButtonsEnabled(false);
+      modal.classList.remove('hidden');
+      drawTrainingModal();
+    }
+
+    function loadTrainingAnimPref() {
+      try {
+        const saved = localStorage.getItem(TRAINING_ANIM_KEY);
+        if (saved !== null) trainingAnimationsEnabled = saved === 'true';
+      } catch (e) {}
+      applyTrainingAnimToggleUI();
+    }
+
+    function saveTrainingAnimPref() {
+      try { localStorage.setItem(TRAINING_ANIM_KEY, String(trainingAnimationsEnabled)); } catch (e) {}
+    }
+
+    function applyTrainingAnimToggleUI() {
+      const toggle = document.getElementById('training-anim-toggle');
+      if (toggle) toggle.checked = trainingAnimationsEnabled;
+    }
+
+    function applyTrainingStat(stat) {
+      if (isMultiplayer()) {
+        multiplayer.socket.emit('training:train-stat', { stat }, (res) => {
+          if (!res?.ok) return;
+          syncLocalPlayerFromRoom();
+          renderStats();
+          continueAfterTraining();
+        });
+        return;
+      }
+      gameState.player.stats[stat]++;
+      renderStats();
+      continueAfterTraining();
+    }
+
+    function trainStat(stat) {
+      if (trainingModalActive) return;
+      if (isMultiplayer() && getLocalRoomPlayer()?.trainingComplete) return;
+      if (!trainingAnimationsEnabled) {
+        applyTrainingStat(stat);
+        return;
+      }
+      showTrainingModal(stat, () => applyTrainingStat(stat));
+    }
+
+    function continueAfterTraining() {
+      if (gameState.turn === SKILL_TURN && !gameState.player.raceSkill) {
+        showSkillModal(() => continueAfterSkillPick());
+        return;
+      }
+      continueAfterSkillPick();
+    }
+
+    function continueAfterSkillPick() {
+      if (BONUS_TURNS.includes(gameState.turn)) {
+        showBonusModal(() => advanceTurn());
+      } else {
+        advanceTurn();
+      }
+    }
+
+    function showSkillModal(callback) {
+      const modal = document.getElementById('skill-modal');
+      const options = document.getElementById('skill-options');
+      options.innerHTML = '';
+
+      RACE_SKILLS.forEach(skill => {
+        const btn = document.createElement('button');
+        btn.className = 'skill-btn';
+        btn.innerHTML = `<span class="skill-name">${skill.name}</span>${skill.description}`;
+        btn.onclick = () => {
+          const finish = () => {
+            updateSkillDisplay();
+            modal.classList.add('hidden');
+            callback();
+          };
+          if (isMultiplayer()) {
+            multiplayer.socket.emit('training:pick-skill', { skillId: skill.id }, (res) => {
+              if (!res?.ok) return;
+              syncLocalPlayerFromRoom();
+              finish();
+            });
+            return;
+          }
+          gameState.player.raceSkill = skill.id;
+          finish();
+        };
+        options.appendChild(btn);
+      });
+
+      modal.classList.remove('hidden');
+    }
+
+    function advanceTurn() {
+      if (isMultiplayer()) {
+        multiplayer.socket.emit('training:advance-turn', {}, (res) => {
+          if (!res?.ok) return;
+          syncLocalPlayerFromRoom();
+          updateTrainingUI();
+          renderTrainingRivals();
+          if (res.complete) {
+            updateTrainingWaitStatus();
+          } else {
+            setTrainButtonsEnabled(true);
+          }
+        });
+        return;
+      }
+      if (gameState.turn >= MAX_TURNS) {
+        showLineupScreen();
+        return;
+      }
+      gameState.turn++;
+      updateTrainingUI();
+    }
+
+    function formatLineupStatsHtml(stats) {
+      return STAT_NAMES.map(stat => `
+        <div class="lineup-stat">
+          <span>${STAT_LABELS[stat]}</span>
+          <strong>${stats[stat]}</strong>
+        </div>`
+      ).join('');
+    }
+
+    function drawLineupPortrait(canvas, racer) {
+      const ctx = canvas.getContext('2d');
+      ctx.imageSmoothingEnabled = false;
+      ctx.fillStyle = '#2d1b4e';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      const bundle = getRacerSpriteBundle(racer);
+      if (bundle.sheet) {
+        drawSpriteOnSheet(ctx, bundle.sheet, bundle.frameData, 'portrait', 0, 32, 58, 52);
+      }
+    }
+
+    function renderLineupGrid() {
+      const grid = document.getElementById('lineup-grid');
+      grid.innerHTML = '';
+
+      const racers = [
+        { ...gameState.player, isPlayer: true },
+        ...gameState.cpus
+      ];
+
+      racers.forEach((racer) => {
+        const card = document.createElement('div');
+        card.className = 'lineup-card' + (racer.isPlayer ? ' player-card' : '');
+
+        const canvas = document.createElement('canvas');
+        canvas.width = 64;
+        canvas.height = 64;
+        drawLineupPortrait(canvas, racer);
+
+        const name = document.createElement('div');
+        name.className = 'lineup-name';
+        name.textContent = racer.isPlayer ? `${racer.name} (YOU)` : racer.name;
+
+        card.appendChild(canvas);
+        card.appendChild(name);
+
+        if (racer.isPlayer && gameState.player.raceSkill) {
+          const skill = getRaceSkill(gameState.player.raceSkill);
+          const skillEl = document.createElement('div');
+          skillEl.className = 'lineup-skill';
+          skillEl.textContent = `SKILL: ${skill.name}`;
+          card.appendChild(skillEl);
+        } else if (racer.isHuman && racer.raceSkill) {
+          const skill = getRaceSkill(racer.raceSkill);
+          const skillEl = document.createElement('div');
+          skillEl.className = 'lineup-skill';
+          skillEl.textContent = `SKILL: ${skill.name}`;
+          card.appendChild(skillEl);
+        } else if (!racer.isPlayer && !racer.isHuman) {
+          const style = CPU_RACER_STYLES.find(s => s.id === racer.cpuStyleId);
+          if (style) {
+            const tag = document.createElement('div');
+            tag.className = 'lineup-tag';
+            tag.textContent = style.label;
+            card.appendChild(tag);
+          }
+        } else if (racer.isHuman) {
+          const tag = document.createElement('div');
+          tag.className = 'lineup-tag';
+          tag.textContent = getRacerChoiceLabel(racer.racerId);
+          card.appendChild(tag);
+        }
+
+        const stats = document.createElement('div');
+        stats.className = 'lineup-stats';
+        stats.innerHTML = formatLineupStatsHtml(racer.stats);
+        card.appendChild(stats);
+
+        grid.appendChild(card);
+      });
+    }
+
+    function showLineupScreen() {
+      if (isMultiplayer()) {
+        buildMultiplayerLineup();
+      } else {
+        generateCPUs();
+      }
+      gameState.phase = 'lineup';
+      renderLineupGrid();
+      updateLineupStartButton();
+      playPreRaceBgm();
+      showScreen('lineup-screen');
+    }
+
+    function showBonusModal(callback) {
+      const modal = document.getElementById('bonus-modal');
+      const options = document.getElementById('bonus-options');
+      const scenarioEl = document.getElementById('bonus-scenario');
+      options.innerHTML = '';
+
+      const scenario = BONUS_SCENARIOS[Math.floor(Math.random() * BONUS_SCENARIOS.length)];
+      scenarioEl.textContent = scenario;
+
+      const shuffled = [...STAT_NAMES].sort(() => Math.random() - 0.5);
+      const choices = shuffled.slice(0, 3);
+
+      choices.forEach(stat => {
+        const btn = document.createElement('button');
+        btn.className = 'bonus-btn';
+        btn.textContent = `${STAT_LABELS[stat]} +2`;
+        btn.onclick = () => {
+          const finish = () => {
+            renderStats();
+            modal.classList.add('hidden');
+            callback();
+          };
+          if (isMultiplayer()) {
+            multiplayer.socket.emit('training:pick-bonus', { stat }, (res) => {
+              if (!res?.ok) return;
+              syncLocalPlayerFromRoom();
+              finish();
+            });
+            return;
+          }
+          gameState.player.stats[stat] += 2;
+          finish();
+        };
+        options.appendChild(btn);
+      });
+
+      modal.classList.remove('hidden');
+    }
+
+    // --- CPU Generation (from cpu-stats.txt via cpu-stats.js) ---
+    function parseCpuStatsText(text) {
+      const runners = [];
+      if (!text) return runners;
+
+      text.split('\n').forEach(line => {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith('#')) return;
+
+        const parts = trimmed.split(',').map(s => s.trim());
+        if (parts.length < 4) return;
+
+        const [name, speed, stamina, agility] = parts;
+        const parsed = {
+          speed: parseInt(speed, 10),
+          stamina: parseInt(stamina, 10),
+          agility: parseInt(agility, 10)
+        };
+
+        if (Object.values(parsed).some(n => Number.isNaN(n))) return;
+
+        runners.push({ name, stats: parsed });
+      });
+
+      return runners;
+    }
+
+    const CPU_STAT_MIN = 1;
+    const CPU_RACE_STAT_TOTAL = 20;
+    const CPU_MIN_RACE_SPEED = 5;
+
+    function getCpuRunners() {
+      if (typeof CPU_STATS_TEXT !== 'undefined') {
+        const parsed = parseCpuStatsText(CPU_STATS_TEXT);
+        if (parsed.length > 0) return parsed;
+      }
+      return DEFAULT_CPU_RUNNERS;
+    }
+
+    function rollRandomCpuStats(total = CPU_RACE_STAT_TOTAL) {
+      const stats = { speed: CPU_STAT_MIN, stamina: CPU_STAT_MIN, agility: CPU_STAT_MIN, focus: CPU_STAT_MIN };
+      const keys = ['speed', 'stamina', 'agility', 'focus'];
+      let remaining = total - CPU_STAT_MIN * keys.length;
+
+      while (remaining > 0) {
+        stats[keys[Math.floor(Math.random() * keys.length)]]++;
+        remaining--;
+      }
+
+      return stats;
+    }
+
+    function generateCPUs() {
+      const configs = getCpuRunners().slice(0, RACE_LANE_COUNT - 1);
+      gameState.cpus = configs.map((runner, i) => ({
+        name: runner.name,
+        stats: rollRandomCpuStats(),
+        isPlayer: false,
+        animOffset: i * 0.35,
+        cpuStyleId: CPU_RACER_STYLES[i].id
+      }));
+    }
+
+    // --- Race Mechanics ---
+    function calcBaseSpeed(racer) {
+      return racer.stats.speed * 2.5;
+    }
+
+    function applyCpuMinRaceSpeed(racer) {
+      if (!racer.isPlayer && !racer.finished) {
+        racer.currentSpeed = Math.max(racer.currentSpeed, CPU_MIN_RACE_SPEED);
+      }
+    }
+
+    function getEffectiveRaceSpeed(racer) {
+      let speed = racer?.currentSpeed || 0;
+      if (racer?.staminaPenalty) speed *= 0.75;
+      return speed;
+    }
+
+    function getFocusPaceTuning(focus) {
+      const t = Math.min(1, Math.max(0, ((focus ?? PACE_FOCUS_BASE) - PACE_FOCUS_BASE) / PACE_FOCUS_SCALE));
+      return {
+        floor: PACE_FLOOR_MIN + t * (PACE_FLOOR_MAX - PACE_FLOOR_MIN),
+        variance: PACE_VARIANCE_MAX - t * (PACE_VARIANCE_MAX - PACE_VARIANCE_MIN)
+      };
+    }
+
+    function getPaceVarianceMultiplier(racer) {
+      const tuning = getFocusPaceTuning(racer.stats?.focus);
+      return tuning.floor + Math.random() * tuning.variance;
+    }
+
+    function getExpectedPaceMultiplier(racer) {
+      const tuning = getFocusPaceTuning(racer.stats?.focus);
+      return tuning.floor + tuning.variance * 0.5;
+    }
+
+    function getRacerMovementSpeed(racer) {
+      let speed = getEffectiveRaceSpeed(racer);
+      if (!racer?.isPlayer) speed = Math.max(speed, CPU_MIN_RACE_SPEED);
+      return speed;
+    }
+
+    function getProjectedFinishTime(racer, currentTime) {
+      const remaining = Math.max(0, RACE_LENGTH - racer.position);
+      if (remaining <= 0) return currentTime;
+      const speed = getRacerMovementSpeed(racer) * getExpectedPaceMultiplier(racer);
+      if (speed <= 0) return currentTime + remaining;
+      return currentTime + remaining / speed;
+    }
+
+    function formatSpeedMph(racer) {
+      if (!racer || racer.finished) return '0.0';
+      return (getEffectiveRaceSpeed(racer) * RACE_SPEED_TO_MPH).toFixed(1);
+    }
+
+    function updateRaceSpeedDisplay(racer) {
+      document.getElementById('race-speed').textContent =
+        `SPEED: ${formatSpeedMph(racer)} MPH`;
+    }
+
+    function createRacerState(racer, lane) {
+      const state = {
+        ...racer,
+        raceSkill: racer.isPlayer ? (gameState.player.raceSkill || racer.raceSkill || null) : racer.raceSkill,
+        lane,
+        position: 0,
+        currentSpeed: calcBaseSpeed(racer),
+        staminaDrain: 0,
+        staminaPenalty: false,
+        staminaChecked: false,
+        skillTriggers: {},
+        finished: false,
+        finishTime: null,
+        passingCooldown: 0,
+        animOffset: racer.animOffset || 0,
+        hurdlesCleared: createHurdlesClearedState(),
+        activeHurdleIndex: -1,
+        jumping: false,
+        jumpTimer: 0,
+        hurdleRecovering: false,
+        hurdleRecoveryTimer: 0,
+        hurdleRecoveryDuration: 0,
+        hurdleRecoveryTarget: 0
+      };
+      applyCpuMinRaceSpeed(state);
+      return state;
+    }
+
+    function getHurdleRecoveryDuration(agility) {
+      const recoveryRate = 1 + (agility / 10) * 0.1;
+      return HURDLE_RECOVERY_BASE_SEC / recoveryRate;
+    }
+
+    function updateHurdleForRacer(racer, dt) {
+      if (racer.finished) {
+        racer.jumping = false;
+        racer.activeHurdleIndex = -1;
+        return;
+      }
+
+      if (racer.hurdleRecovering) {
+        racer.hurdleRecoveryTimer += dt;
+        const t = Math.min(1, racer.hurdleRecoveryTimer / racer.hurdleRecoveryDuration);
+        racer.currentSpeed = racer.hurdleRecoveryTarget * (HURDLE_SPEED_MULTIPLIER + (1 - HURDLE_SPEED_MULTIPLIER) * t);
+        if (t >= 1) {
+          racer.hurdleRecovering = false;
+          racer.currentSpeed = racer.hurdleRecoveryTarget;
+        }
+      }
+
+      const zones = getHurdleZones();
+      let inJumpZone = false;
+
+      for (let i = 0; i < zones.length; i++) {
+        if (racer.hurdlesCleared[i]) continue;
+        const zone = zones[i];
+
+        if (racer.position >= zone.clearPos) {
+          racer.hurdlesCleared[i] = true;
+          racer.jumping = false;
+          racer.activeHurdleIndex = -1;
+          racer.hurdleRecoveryTarget = racer.currentSpeed;
+          racer.currentSpeed = racer.hurdleRecoveryTarget * HURDLE_SPEED_MULTIPLIER;
+          racer.hurdleRecovering = true;
+          racer.hurdleRecoveryTimer = 0;
+          racer.hurdleRecoveryDuration = getHurdleRecoveryDuration(racer.stats.agility);
+
+          if (racer.isPlayer) {
+            const secs = racer.hurdleRecoveryDuration.toFixed(1);
+            gameState.eventLog.push(`Hurdle ${i + 1} cleared! -50% speed, recovering in ${secs}s`);
+          }
+          continue;
+        }
+
+        if (racer.position >= zone.jumpStart && racer.position < zone.clearPos) {
+          if (!racer.jumping) racer.jumpTimer = 0;
+          racer.jumping = true;
+          racer.activeHurdleIndex = i;
+          racer.jumpTimer += dt;
+          inJumpZone = true;
+          break;
+        }
+      }
+
+      if (!inJumpZone) {
+        racer.jumping = false;
+        racer.activeHurdleIndex = -1;
+      }
+
+      if (allHurdlesCleared(racer)) {
+        racer.jumping = false;
+        racer.activeHurdleIndex = -1;
+      }
+    }
+
+    function getRacerRaceSkill(racer) {
+      if (racer.isPlayer) return gameState.player.raceSkill || racer.raceSkill || null;
+      return racer.raceSkill || null;
+    }
+
+    function getEffectiveStamina(racer) {
+      const drainFactor = racer.skillTriggers?.secondWind ? 0.35 : 0.5;
+      return racer.stats.stamina - racer.staminaDrain * drainFactor;
+    }
+
+    function applyRaceSkills(racer) {
+      if (!racer.isPlayer) return;
+      const raceSkill = getRacerRaceSkill(racer);
+      if (!raceSkill) return;
+
+      const progress = getLapProgress(racer.position);
+
+      if (raceSkill === 'secondWind' && !racer.skillTriggers.secondWind && progress >= 0.5) {
+        racer.skillTriggers.secondWind = true;
+        racer.stats.stamina += 10;
+        racer.staminaDrain = Math.max(0, racer.staminaDrain - 10);
+        racer.staminaPenalty = false;
+        gameState.eventLog.push('Second Wind! +10 Stamina — fatigue held back!');
+      }
+
+      if (raceSkill === 'midraceSurge' && !racer.skillTriggers.midraceSurge && progress >= 0.5) {
+        racer.skillTriggers.midraceSurge = true;
+        racer.currentSpeed += 20;
+        gameState.eventLog.push('Midrace Surge! +20 Speed!');
+      }
+
+      if (raceSkill === 'finalKick' && !racer.skillTriggers.finalKick && progress >= 0.75) {
+        racer.skillTriggers.finalKick = true;
+        racer.currentSpeed += 30;
+        gameState.eventLog.push('Final Kick! +30 Speed!');
+      }
+    }
+
+    function captureReplayFrame() {
+      raceReplay.frames.push({
+        t: gameState.raceTime,
+        racers: gameState.racers.map(r => ({
+          position: r.position,
+          finished: r.finished,
+          staminaPenalty: r.staminaPenalty,
+          currentSpeed: r.currentSpeed,
+          lane: r.lane,
+          isPlayer: r.isPlayer,
+          name: r.name,
+          racerId: r.racerId,
+          cpuStyleId: r.cpuStyleId,
+          animOffset: r.animOffset,
+          jumping: r.jumping,
+          jumpTimer: r.jumpTimer,
+          hurdlesCleared: [...r.hurdlesCleared],
+          activeHurdleIndex: r.activeHurdleIndex,
+          hurdleRecovering: r.hurdleRecovering,
+          hurdleRecoveryTimer: r.hurdleRecoveryTimer,
+          hurdleRecoveryDuration: r.hurdleRecoveryDuration,
+          hurdleRecoveryTarget: r.hurdleRecoveryTarget
+        }))
+      });
+    }
+
+    function recordReplaySample(dt) {
+      if (!gameState.raceRunning) return;
+      replaySampleTimer += dt;
+      if (replaySampleTimer >= REPLAY_SAMPLE_INTERVAL) {
+        captureReplayFrame();
+        replaySampleTimer = 0;
+      }
+    }
+
+    function finalizeReplayRecording() {
+      if (raceReplay.finalized || !raceReplay.frames.length) return;
+      captureReplayFrame();
+      const lastT = raceReplay.frames[raceReplay.frames.length - 1].t;
+      raceReplay.duration = Math.max(gameState.raceTime, lastT, 0.1);
+      raceReplay.finalized = true;
+    }
+
+    function getReplayRacersAt(time) {
+      const frames = raceReplay.frames;
+      if (!frames.length) return [];
+
+      if (time <= frames[0].t) return frames[0].racers.map(cloneReplayRacer);
+      const last = frames[frames.length - 1];
+      if (time >= last.t) return last.racers.map(cloneReplayRacer);
+
+      let i = 0;
+      while (i < frames.length - 2 && frames[i + 1].t < time) i++;
+      const a = frames[i];
+      const b = frames[i + 1];
+      const span = b.t - a.t || 0.001;
+      const u = (time - a.t) / span;
+
+      return a.racers.map((ra, idx) => {
+        const rb = b.racers[idx];
+        return {
+          position: ra.position + (rb.position - ra.position) * u,
+          finished: u >= 1 ? rb.finished : (u >= 0.85 ? rb.finished : ra.finished),
+          staminaPenalty: ra.staminaPenalty || rb.staminaPenalty,
+          currentSpeed: (ra.currentSpeed || 12) + ((rb.currentSpeed || 12) - (ra.currentSpeed || 12)) * u,
+          lane: ra.lane,
+          isPlayer: ra.isPlayer,
+          name: ra.name,
+          racerId: ra.racerId,
+          cpuStyleId: ra.cpuStyleId,
+          animOffset: ra.animOffset,
+          jumping: u >= 0.5 ? rb.jumping : ra.jumping,
+          jumpTimer: ra.jumpTimer + (rb.jumpTimer - ra.jumpTimer) * u,
+          hurdlesCleared: normalizeReplayRacer(ra).hurdlesCleared.map((cleared, hi) => {
+            const rbCleared = normalizeReplayRacer(rb).hurdlesCleared[hi];
+            return u >= 0.5 ? rbCleared : cleared;
+          }),
+          activeHurdleIndex: u >= 0.5 ? (rb.activeHurdleIndex ?? ra.activeHurdleIndex) : (ra.activeHurdleIndex ?? -1),
+          hurdleRecovering: u >= 0.5 ? rb.hurdleRecovering : ra.hurdleRecovering,
+          hurdleRecoveryTimer: ra.hurdleRecoveryTimer + (rb.hurdleRecoveryTimer - ra.hurdleRecoveryTimer) * u,
+          hurdleRecoveryDuration: ra.hurdleRecoveryDuration + (rb.hurdleRecoveryDuration - ra.hurdleRecoveryDuration) * u,
+          hurdleRecoveryTarget: ra.hurdleRecoveryTarget + (rb.hurdleRecoveryTarget - ra.hurdleRecoveryTarget) * u
+        };
+      });
+    }
+
+    function normalizeReplayRacer(r) {
+      if (r.hurdlesCleared) {
+        return {
+          ...r,
+          hurdlesCleared: [...r.hurdlesCleared],
+          activeHurdleIndex: r.activeHurdleIndex ?? -1
+        };
+      }
+      const hurdlesCleared = r.hurdleCleared
+        ? HURDLE_PROGRESSES.map(() => true)
+        : createHurdlesClearedState();
+      return {
+        ...r,
+        hurdlesCleared,
+        activeHurdleIndex: r.activeHurdleIndex ?? -1
+      };
+    }
+
+    function cloneReplayRacer(r) {
+      return normalizeReplayRacer(r);
+    }
+
+    function updateReplayHUD() {
+      const racers = gameState.replayRacers || [];
+      const player = racers.find(r => r.isPlayer) || racers[0];
+      if (!player) return;
+      const sorted = [...racers].sort((a, b) => b.position - a.position);
+      const pos = sorted.findIndex(r => r.isPlayer) + 1;
+      const lapPct = Math.floor(getLapProgress(player.position) * 100);
+      document.getElementById('race-position').textContent =
+        `REPLAY  |  POS ${pos}${getOrdinal(pos)} / ${getRaceFieldSize()}  |  LAP ${getLapNumber(player.position)}/${TOTAL_LAPS} (${lapPct}%)`;
+      updateRaceSpeedDisplay(player);
+      document.getElementById('event-log').textContent = 'Watching race replay...';
+    }
+
+    function setRaceSkipVisible(visible) {
+      document.getElementById('race-skip-btn').classList.toggle('hidden', !visible);
+    }
+
+    function setReplaySkipVisible(visible) {
+      document.getElementById('replay-skip-btn').classList.toggle('hidden', !visible);
+    }
+
+    function setRaceSpeedControlsVisible(visible) {
+      document.getElementById('race-speed-controls').classList.toggle('hidden', !visible);
+    }
+
+    function updateRaceSpeedUI() {
+      document.querySelectorAll('.race-speed-btn').forEach((btn) => {
+        const speed = Number(btn.dataset.speed);
+        btn.classList.toggle('active', speed === raceSpeedMultiplier);
+      });
+    }
+
+    function setRaceSpeed(multiplier) {
+      raceSpeedMultiplier = [1, 2, 4].includes(multiplier) ? multiplier : 1;
+      updateRaceSpeedUI();
+    }
+
+    function resetRaceSpeed() {
+      setRaceSpeed(1);
+    }
+
+    function skipRace() {
+      if (isMultiplayer() && gameState.serverRace) {
+        if (multiplayer.room?.hostId !== multiplayer.playerId) return;
+        if (gameState.phase !== 'race' || !gameState.raceRunning) return;
+        multiplayer.socket.emit('host:skip-race', (res) => {
+          if (!res?.ok) {
+            gameState.eventLog.push(res?.error || 'Could not skip race');
+            updateRaceHUD();
+          }
+        });
+        return;
+      }
+      if (gameState.serverRace) return;
+      if (gameState.phase !== 'race' || !gameState.raceRunning) return;
+
+      setRaceSkipVisible(false);
+      setRaceSpeedControlsVisible(false);
+      const currentTime = gameState.raceTime;
+
+      gameState.racers.forEach((racer) => {
+        racer.finishTime = getProjectedFinishTime(racer, currentTime);
+        racer.position = RACE_LENGTH;
+        racer.finished = true;
+        racer.jumping = false;
+        racer.hurdleRecovering = false;
+      });
+
+      gameState.raceRunning = false;
+      gameState.raceFinished = true;
+      gameState.resultsDelay = 0;
+      gameState.eventLog.push('Race skipped — showing results.');
+      captureReplayFrame();
+      finalizeReplayRecording();
+      showResults();
+    }
+
+    function startReplay() {
+      if (!raceReplay.frames.length) return;
+      setRaceSkipVisible(false);
+      setReplaySkipVisible(true);
+      setRaceSpeedControlsVisible(true);
+      resetRaceSpeed();
+      playRaceBgm();
+      gameState.phase = 'replay';
+      gameState.replayTime = 0;
+      gameState.replayDuration = Math.max(raceReplay.duration, 0.1);
+      gameState.replayEndDelay = 1.5;
+      gameState.replayRacers = getReplayRacersAt(0);
+      showScreen('race-screen');
+      resizeRaceCanvas();
+      updateReplayHUD();
+      drawRace(gameState.replayRacers);
+      lastTime = 0;
+      requestAnimationFrame(replayLoop);
+    }
+
+    function endReplay() {
+      setReplaySkipVisible(false);
+      setRaceSpeedControlsVisible(false);
+      resetRaceSpeed();
+      stopRaceBgm();
+      gameState.phase = 'results';
+      gameState.replayRacers = null;
+      showScreen('results-screen');
+      playResultsBgm();
+    }
+
+    function replayLoop(timestamp) {
+      if (gameState.phase !== 'replay') return;
+
+      const dt = lastTime ? Math.min((timestamp - lastTime) / 1000, 0.05) : 0;
+      const scaledDt = dt * raceSpeedMultiplier;
+      lastTime = timestamp;
+      globalAnimTime = timestamp / 1000;
+
+      if (gameState.replayTime < gameState.replayDuration) {
+        gameState.replayTime = Math.min(gameState.replayDuration, gameState.replayTime + scaledDt);
+        gameState.replayRacers = getReplayRacersAt(gameState.replayTime);
+        updateReplayHUD();
+        drawRace(gameState.replayRacers);
+        requestAnimationFrame(replayLoop);
+        return;
+      }
+
+      gameState.replayRacers = getReplayRacersAt(gameState.replayDuration);
+      drawRace(gameState.replayRacers);
+      gameState.replayEndDelay -= scaledDt;
+      if (gameState.replayEndDelay <= 0) {
+        endReplay();
+        return;
+      }
+      requestAnimationFrame(replayLoop);
+    }
+
+    function startRace() {
+      if (isMultiplayer()) {
+        if (multiplayer.room?.hostId !== multiplayer.playerId) return;
+        multiplayer.socket.emit('host:start-race', (res) => {
+          if (!res?.ok) {
+            const prompt = document.querySelector('.lineup-prompt');
+            if (prompt) prompt.textContent = res?.error || 'Could not start race';
+          }
+        });
+        return;
+      }
+
+      setReplaySkipVisible(false);
+      setRaceSkipVisible(true);
+      setRaceSpeedControlsVisible(true);
+      resetRaceSpeed();
+      stopPreRaceBgm();
+      playRaceBgm();
+      gameState.serverRace = false;
+      if (!gameState.cpus.length) generateCPUs();
+      raceReplay = { frames: [], duration: 0, finalized: false };
+      replaySampleTimer = 0;
+      gameState.phase = 'race';
+      gameState.racers = [
+        createRacerState(gameState.player, 0),
+        ...gameState.cpus.map((cpu, i) => createRacerState(cpu, i + 1))
+      ];
+      gameState.raceRunning = true;
+      gameState.raceFinished = false;
+      gameState.resultsDelay = 0;
+      const skill = getRaceSkill(gameState.player.raceSkill);
+      gameState.eventLog = skill
+        ? [`The race has begun! Hurdles at 15% & 60% — Agility recovers speed!`, `Skill ready: ${skill.name}`]
+        : [`The race has begun! Go ${gameState.player.name}!`, 'Hurdles at 15% & 60% — Agility recovers speed!'];
+      gameState.raceTime = 0;
+      lastTime = 0;
+
+      showScreen('race-screen');
+      resizeRaceCanvas();
+      captureReplayFrame();
+      updateRaceHUD();
+      requestAnimationFrame(raceLoop);
+    }
+
+    function updateRaceHUD() {
+      const player = gameState.racers.find(r => r.isPlayer) || gameState.racers[0];
+      const sorted = [...gameState.racers].sort((a, b) => b.position - a.position);
+      const pos = sorted.findIndex(r => r.isPlayer) + 1;
+      const lap = getLapNumber(player.position);
+      const lapPct = Math.floor(getLapProgress(player.position) * 100);
+      document.getElementById('race-position').textContent =
+        `POSITION: ${pos}${getOrdinal(pos)} / ${getRaceFieldSize()}  |  LAP ${lap}/${TOTAL_LAPS} (${lapPct}%)`;
+      updateRaceSpeedDisplay(player);
+      document.getElementById('event-log').textContent = gameState.eventLog.slice(-2).join('  |  ');
+    }
+
+    function getOrdinal(n) {
+      return ['th','st','nd','rd'][(n > 3 && n < 21) || n % 10 > 3 ? 0 : n % 10];
+    }
+
+    function formatRaceTime(seconds) {
+      if (seconds == null || !Number.isFinite(seconds)) return '--';
+      const mins = Math.floor(seconds / 60);
+      const secs = seconds % 60;
+      if (mins > 0) {
+        return `${mins}:${secs.toFixed(2).padStart(5, '0')}`;
+      }
+      return `${secs.toFixed(2)}s`;
+    }
+
+    function raceUpdate(dt) {
+      if (!gameState.raceRunning) return;
+
+      gameState.raceTime += dt;
+      let allFinished = true;
+
+      gameState.racers.forEach(racer => {
+        if (racer.finished) return;
+        allFinished = false;
+
+        // Stamina drain increases with speed
+        racer.staminaDrain += dt * 0.8;
+
+        const lapProgress = getLapProgress(racer.position);
+        applyRaceSkills(racer);
+        updateHurdleForRacer(racer, dt);
+        applyCpuMinRaceSpeed(racer);
+
+        // Check stamina at 75% of current lap
+        if (!racer.staminaChecked && lapProgress >= STAMINA_CHECK_POINT) {
+          racer.staminaChecked = true;
+          const effectiveStamina = getEffectiveStamina(racer);
+          const secondWindSave = racer.isPlayer && racer.skillTriggers?.secondWind;
+          if (effectiveStamina < STAMINA_REQUIREMENT && !secondWindSave) {
+            racer.staminaPenalty = true;
+            if (racer.isPlayer) {
+              gameState.eventLog.push('Stamina fading! Speed -25%!');
+            }
+          } else if (secondWindSave && racer.isPlayer) {
+            gameState.eventLog.push('Second Wind keeps your pace strong!');
+          }
+        }
+
+        let speed = racer.currentSpeed;
+
+        if (racer.staminaPenalty) {
+          speed *= 0.75;
+        }
+
+        // Passing logic
+        if (racer.passingCooldown > 0) {
+          racer.passingCooldown -= dt;
+        }
+
+        const ahead = gameState.racers
+          .filter(r => !r.finished && r.position > racer.position && r.position - racer.position < 30)
+          .sort((a, b) => a.position - b.position)[0];
+
+        if (ahead && racer.passingCooldown <= 0) {
+          const passChance = racer.stats.agility / (racer.stats.agility + ahead.stats.agility + 5);
+          if (Math.random() < passChance * dt * 0.5) {
+            const boost = 15 + racer.stats.agility * 2;
+            racer.position = Math.min(racer.position + boost, ahead.position + 5);
+            racer.passingCooldown = 2;
+            if (racer.isPlayer) {
+              gameState.eventLog.push(`Passed ${ahead.name}!`);
+            } else if (ahead.isPlayer) {
+              gameState.eventLog.push(`${racer.name} passed you!`);
+            }
+          }
+        }
+
+        // Focus steadies pacing — high focus means less random speed wobble
+        speed *= getPaceVarianceMultiplier(racer);
+
+        if (!racer.isPlayer) {
+          speed = Math.max(speed, CPU_MIN_RACE_SPEED);
+        }
+
+        racer.position += speed * dt;
+
+        if (racer.position >= RACE_LENGTH) {
+          racer.position = RACE_LENGTH;
+          racer.finished = true;
+          racer.finishTime = gameState.raceTime;
+          if (racer.isPlayer) {
+            gameState.eventLog.push(`Lap ${TOTAL_LAPS} complete — finish line!`);
+          }
+        }
+      });
+
+      updateRaceHUD();
+
+      if (allFinished || gameState.racers.every(r => r.finished)) {
+        gameState.raceRunning = false;
+        gameState.raceFinished = true;
+        gameState.resultsDelay = 2.5;
+        setRaceSkipVisible(false);
+        setRaceSpeedControlsVisible(false);
+      }
+    }
+
+    let lastTime = 0;
+    function raceLoop(timestamp) {
+      const dt = lastTime ? Math.min((timestamp - lastTime) / 1000, 0.05) : 0;
+      const scaledDt = dt * raceSpeedMultiplier;
+      lastTime = timestamp;
+      globalAnimTime = timestamp / 1000;
+
+      if (gameState.phase === 'race') {
+        if (gameState.raceRunning && !gameState.serverRace) {
+          raceUpdate(scaledDt);
+          recordReplaySample(scaledDt);
+        } else if (gameState.raceFinished && !gameState.serverRace) {
+          recordReplaySample(scaledDt);
+          finalizeReplayRecording();
+        }
+        drawRace();
+        if (gameState.raceFinished) {
+          gameState.resultsDelay -= scaledDt;
+          if (gameState.resultsDelay <= 0) {
+            showResults();
+            return;
+          }
+        }
+        requestAnimationFrame(raceLoop);
+      }
+    }
+
+    function drawRace(racersOverride) {
+      const canvas = document.getElementById('race-canvas');
+      const ctx = canvas.getContext('2d');
+      ctx.imageSmoothingEnabled = false;
+
+      const W = canvas.width;
+      const H = canvas.height;
+
+      updateTrackDrawRect(W, H);
+
+      const drawRacers = racersOverride || gameState.racers;
+      const player = drawRacers.find(r => r.isPlayer) || drawRacers[0];
+      const lapProgress = player ? getLapProgress(player.position) : 0;
+
+      if (trackReady && trackLaneImage) {
+        drawTrackBackground(ctx, W, H);
+        drawScrollingTrack(ctx, getTrackScrollPx(lapProgress), W);
+      } else {
+        drawFallbackTrack(ctx, W, H);
+      }
+
+      const spriteH = getRunnerSpriteHeight();
+
+      drawHurdles(ctx, W, spriteH);
+      drawFinishLine(ctx, W);
+      drawTrackDebugOverlay(ctx, W);
+      const sorted = [...drawRacers].sort((a, b) => a.position - b.position);
+      sorted.forEach((racer) => {
+        const pt = getRacerScreenPoint(racer, W);
+        const animKey = getRacerAnimation(racer);
+        const speedMod = getRacerAnimSpeed(racer);
+        const frame = getRacerFrame(racer, animKey, speedMod);
+        const jumpLift = animKey === 'jump' ? getJumpLift(racer, spriteH) : 0;
+
+        let spriteTop = pt.y - spriteH;
+        const spriteBundle = getRacerSpriteBundle(racer);
+        if (spriteBundle.sheet) {
+          const drawn = drawSpriteFrame(
+            ctx, pt.x, pt.y - jumpLift, animKey, frame, spriteH, pt.tangent,
+            spriteBundle.sheet, spriteBundle.frameData
+          );
+          spriteTop = drawn.top;
+        }
+
+        ctx.fillStyle = racer.isPlayer ? '#ffd700' : '#fff';
+        ctx.font = '6px "Press Start 2P"';
+        ctx.textAlign = 'center';
+        ctx.fillText(racer.name.substring(0, 8), pt.x, spriteTop - 4);
+
+        if (racer.hurdleRecovering && !racer.finished) {
+          ctx.fillStyle = '#7fd7ff';
+          ctx.fillText('RECOV', pt.x, spriteTop - 14);
+        } else if (racer.staminaPenalty && !racer.finished) {
+          ctx.fillStyle = '#ff6eb4';
+          ctx.fillText('TIRED', pt.x, spriteTop - 14);
+        }
+      });
+      ctx.textAlign = 'left';
+
+      if (!player) return;
+      const barY = H - 22;
+      const barW = W - 40;
+      ctx.fillStyle = '#333';
+      ctx.fillRect(20, barY, barW, 12);
+      ctx.fillStyle = '#ff6eb4';
+      ctx.fillRect(20, barY, barW * lapProgress, 12);
+      ctx.strokeStyle = '#ffd700';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(20, barY, barW, 12);
+
+      ctx.fillStyle = '#ffd700';
+      ctx.font = '5px "Press Start 2P"';
+      ctx.fillText(`LAP ${getLapNumber(player.position)}/${TOTAL_LAPS}`, 22, barY - 4);
+
+      // Start/finish at 0% and 100% of each lap
+      ctx.fillStyle = '#fff';
+      ctx.fillText('S/F', 18, barY + 28);
+
+      // Hurdle markers on lap bar
+      ctx.strokeStyle = '#ffd700';
+      ctx.setLineDash([3, 3]);
+      ctx.fillStyle = '#ffd700';
+      ctx.font = '5px "Press Start 2P"';
+      HURDLE_PROGRESSES.forEach((progress, index) => {
+        const hurdleX = 20 + barW * progress;
+        ctx.beginPath();
+        ctx.moveTo(hurdleX, barY - 5);
+        ctx.lineTo(hurdleX, barY + 17);
+        ctx.stroke();
+        ctx.fillText(`H${index + 1}`, hurdleX - 5, barY + 28);
+      });
+      ctx.setLineDash([]);
+
+      // 75% stamina marker on lap bar
+      const markerX = 20 + barW * STAMINA_CHECK_POINT;
+      ctx.strokeStyle = '#ff6eb4';
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(markerX, barY - 5);
+      ctx.lineTo(markerX, barY + 17);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = '#ff6eb4';
+      ctx.font = '5px "Press Start 2P"';
+      ctx.fillText('75%', markerX - 8, barY + 28);
+    }
+
+    // --- Results ---
+    function showResults() {
+      setRaceSkipVisible(false);
+      setReplaySkipVisible(false);
+      setRaceSpeedControlsVisible(false);
+      resetRaceSpeed();
+      stopRaceBgm();
+      playResultsBgm();
+      gameState.phase = 'results';
+      const sorted = [...gameState.racers].sort((a, b) => {
+        if (a.finishTime && b.finishTime) return a.finishTime - b.finishTime;
+        return b.position - a.position;
+      });
+
+      const player = sorted.find(r => r.isPlayer);
+      const playerPos = sorted.findIndex(r => r.isPlayer) + 1;
+      const won = playerPos === 1;
+      const playerTime = formatRaceTime(player?.finishTime);
+
+      showScreen('results-screen');
+
+      const title = document.getElementById('result-title');
+      const text = document.getElementById('result-text');
+      title.className = won ? 'win' : 'lose';
+      title.textContent = won ? 'VICTORY!' : 'DEFEAT...';
+
+      const medals = ['🥇', '🥈', '🥉', '4th', '5th', '6th'];
+      let standings = sorted.map((r, i) =>
+        `${medals[i] || (i+1)+'th'} ${r.name}${r.isPlayer ? ' (YOU)' : ''} — ${formatRaceTime(r.finishTime)}`
+      ).join('<br>');
+
+      text.innerHTML = won
+        ? 'Your catgirl crossed the line first!<br>Nya nya~!'
+        : `You finished ${playerPos}${getOrdinal(playerPos)}.<br>Train harder next time!`;
+      text.innerHTML += `<br><br><strong>RACE TIME: ${playerTime}</strong>`;
+      text.innerHTML += '<br><br><strong>STANDINGS</strong><br>' + standings;
+
+      const stats = gameState.player.stats;
+      const skill = getRaceSkill(gameState.player.raceSkill);
+      const skillLine = skill
+        ? `<br>SKILL: ${skill.name} (${skill.description})`
+        : '';
+
+      document.getElementById('final-stats').innerHTML =
+        `<strong>YOUR FINAL STATS</strong><br>` +
+        `SPEED: ${stats.speed} | STAMINA: ${stats.stamina} | AGILITY: ${stats.agility} | FOCUS: ${stats.focus}` +
+        skillLine;
+
+      const replayBtn = document.getElementById('replay-btn');
+      replayBtn.disabled = !raceReplay.finalized || raceReplay.frames.length < 2;
+
+      const canvas = document.getElementById('results-canvas');
+      const ctx = canvas.getContext('2d');
+      ctx.imageSmoothingEnabled = false;
+      ctx.fillStyle = '#2d1b4e';
+      ctx.fillRect(0, 0, 120, 120);
+      if (spritesReady) {
+        const animKey = won ? 'finish' : 'portrait';
+        drawSpriteFrame(ctx, 10, 110, animKey, 0, 95);
+      }
+    }
+
+    function uiAnimLoop(timestamp) {
+      globalAnimTime = timestamp / 1000;
+      if (trainingModalActive) drawTrainingModal();
+      requestAnimationFrame(uiAnimLoop);
+    }
+
+    // --- Init ---
+    document.getElementById('splash-create-btn').onclick = createMultiplayerRoom;
+    document.getElementById('splash-solo-btn').onclick = () => {
+      multiplayer.mode = 'solo';
+      multiplayer.room = null;
+      multiplayer.playerId = null;
+      multiplayer.localReady = false;
+      goToSetup();
+    };
+    document.getElementById('splash-join-toggle').onclick = () => {
+      document.getElementById('splash-join-panel').classList.toggle('hidden');
+      setJoinError('');
+    };
+    document.getElementById('splash-join-confirm').onclick = () => {
+      joinMultiplayerRoom(document.getElementById('join-room-code').value);
+    };
+    document.getElementById('join-room-code').addEventListener('input', (e) => {
+      e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+      setJoinError('');
+    });
+    document.getElementById('join-room-code').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        joinMultiplayerRoom(e.target.value);
+      }
+    });
+    document.getElementById('start-btn').onclick = handleSetupAction;
+    document.getElementById('lobby-ready-btn').onclick = toggleLobbyReady;
+    document.getElementById('lobby-start-btn').onclick = hostStartTraining;
+    document.getElementById('lineup-start-btn').onclick = startRace;
+    document.getElementById('racer-name-input').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && gameState.phase === 'setup') {
+        e.preventDefault();
+        handleEnterKey();
+      }
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && (gameState.phase === 'setup' || gameState.phase === 'lobby' || gameState.phase === 'lineup')) {
+        e.preventDefault();
+        handleEnterKey();
+      }
+    });
+    document.getElementById('replay-btn').onclick = startReplay;
+    document.getElementById('race-skip-btn').onclick = skipRace;
+    document.getElementById('replay-skip-btn').onclick = endReplay;
+    document.querySelectorAll('.race-speed-btn').forEach((btn) => {
+      btn.onclick = () => setRaceSpeed(Number(btn.dataset.speed));
+    });
+    document.getElementById('restart-btn').onclick = () => {
+      stopSetupBgm();
+      stopTrainingBgm();
+      stopPreRaceBgm();
+      stopRaceBgm();
+      stopResultsBgm();
+      initGame();
+      multiplayer.mode = 'solo';
+      multiplayer.room = null;
+      multiplayer.playerId = null;
+      multiplayer.localReady = false;
+      multiplayer.racerMeta = {};
+      gameState.serverRace = false;
+      clearMultiplayerSession();
+      multiplayer.reconnectAttempted = false;
+      applySelectedRacer(selectedRacerId);
+      renderRacerOptions();
+      gameState.phase = 'splash';
+      showScreen('splash-screen');
+      playTitleBgm();
+    };
+
+    selectedRacerId = loadSelectedRacerId();
+    initGame();
+    renderTrainButtons();
+    showScreen('splash-screen');
+    requestAnimationFrame(uiAnimLoop);
+    window.addEventListener('resize', resizeLayout);
+
+    document.getElementById('start-btn').disabled = true;
+    document.getElementById('start-btn').textContent = 'LOADING...';
+
+    loadTrainingAnimPref();
+    document.getElementById('training-anim-toggle').addEventListener('change', (e) => {
+      trainingAnimationsEnabled = e.target.checked;
+      saveTrainingAnimPref();
+    });
+
+    initVolumeControl();
+    initTitleBgm();
+    initSetupBgm();
+    initTrainingBgm();
+    initPreRaceBgm();
+    initRaceBgm();
+    initResultsBgm();
+
+    document.addEventListener('click', () => {
+      if (gameState.phase === 'splash') playTitleBgm();
+    }, { once: true });
+
+    loadTitleArt();
+    ensureMultiplayerSocket();
+    if (loadMultiplayerSession()) {
+      tryReconnectSession();
+    }
+
+    Promise.all([loadSprites(), loadTrack(), loadHurdle(), loadTrainingJacksSprite()]).then(([spritesLoaded]) => {
+      renderRacerOptions();
+      enableStartButton(spritesLoaded);
+      playTitleBgm();
+    });
+  </script>
+</body>
+</html>

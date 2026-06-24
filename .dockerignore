@@ -1,0 +1,5 @@
+node_modules
+.git
+*.ps1
+terminals
+updates.jsonl

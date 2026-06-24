@@ -1,0 +1,25 @@
+Making a video game called: Racing Girls
+
+All characters are Catgirls.
+
+It's a 16bit racing game with pixel art. It is played in two phases. 1st phase is training. 2nd Phase is the race.
+
+Stats:
+Players start will all stats at 5.
+When a player trains a stat it increases by 1.
+Every 3 turns the player gets to choose a random stat of 3 choices by 2.
+A player can train one of 4 Stats on a turn. There is 10 turns and then the race:
+
+Speed: It effect your top speed
+Stamina: If not enough stamina at 80% of course left, will reduce your top speed by 25%.
+Strength: Effects how well you can pass another runner. 
+Aptitude: How well can run on the track. If low Aptitude
+
+2nd Phase: The race
+Player will race 5 other CPU oppenents. 
+The player only wants their catgirl race. 
+The first to cross the finish line is the winner.
+
+The track:
+It is a medium distance track. Stamina requirement is 15.
+

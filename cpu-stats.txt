@@ -1,0 +1,24 @@
+# ============================================================
+# PURRFECT CIRCUIT - CPU Runner Stats
+# ============================================================
+#
+# Edit this file to set CPU opponent names for the race.
+# Each CPU gets random race stats totaling 20 (Speed/Stamina/Agility).
+#
+# Format (one runner per line):
+#   Name, Speed, Stamina, Agility
+#
+# - Lines starting with # are ignored
+# - You can add or remove runners (need at least 1 for a race)
+# - The three stat numbers are ignored; only the name is used
+# - Each CPU name maps to a unique recolored sprite (Mint/Rose/Sky/Lime/Violet)
+#
+# After saving this file, run sync-cpu-stats.bat to apply changes
+# (or double-click sync-cpu-stats.bat in this folder).
+# ============================================================
+
+Kitty Litter, 15, 12, 11
+Luna, 13, 16, 10
+Sakura, 14, 11, 14
+Hana, 12, 14, 12
+Yuki, 16, 10, 13

@@ -1,0 +1,8 @@
+node_modules/
+js music.zip
+.env
+.env.*
+*.log
+.DS_Store
+Thumbs.db
+terminals/
