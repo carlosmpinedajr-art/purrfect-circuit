@@ -1305,7 +1305,7 @@
         id: 'yellow',
         label: 'SUNNY',
         portraitPath: 'portrait-select-sunny.jpg',
-        runGif: 'sunny-run.gif',
+        runSheet: 'sunny-run-sprites.jpg',
         paths: ['catgirl-yellow-transparent.png', 'catgirl-yellow.jpg']
       },
       {
@@ -1348,6 +1348,18 @@
       finish: [
         { sx:517, sy:454, sw:163, sh:107, feet:561 }
       ]
+    };
+
+    const SUNNY_RUN_CYCLE = [
+      { sx: 53,  sy: 140, sw: 203, sh: 252, feet: 391 },
+      { sx: 256, sy: 140, sw: 229, sh: 252, feet: 391 },
+      { sx: 516, sy: 140, sw: 191, sh: 252, feet: 391 },
+      { sx: 773, sy: 140, sw: 157, sh: 252, feet: 391 }
+    ];
+
+    const FRAME_DATA_SUNNY_RUN = {
+      runStart: SUNNY_RUN_CYCLE,
+      runFull: SUNNY_RUN_CYCLE
     };
 
     const FRAME_DATA_YELLOW = {
@@ -1393,6 +1405,7 @@
 
     RACER_CHOICES[0].frames = FRAME_DATA_PURPLE;
     RACER_CHOICES[1].frames = FRAME_DATA_YELLOW;
+    RACER_CHOICES[1].runFrames = FRAME_DATA_SUNNY_RUN;
     RACER_CHOICES[2].frames = FRAME_DATA_ORANGE;
 
     let selectedRacerId = 'purple';
@@ -1407,6 +1420,7 @@
     };
     let currentFrameData = FRAME_DATA_PURPLE;
     let racerSpriteCache = {};
+    let racerRunSheetCache = {};
     let racerGifCache = {};
     let cpuSpriteCache = {};
     let trainingJacksSheet = null;
@@ -2623,6 +2637,18 @@
           }
         }
         racerSpriteCache[racer.id] = { sheet: img, processed };
+        if (racer.runSheet) {
+          const runImg = await loadRacerImage([racer.runSheet]);
+          if (runImg) {
+            let runProcessed = runImg;
+            try {
+              runProcessed = removeSpriteBackground(runImg);
+            } catch (err) {
+              runProcessed = runImg;
+            }
+            racerRunSheetCache[racer.id] = { sheet: runImg, processed: runProcessed };
+          }
+        }
         if (racer.runGif) preloadRunGif(racer.id, racer.runGif);
         return true;
       })).then(async (results) => {
@@ -2831,13 +2857,16 @@
       }
     }
 
-    function getRacerSpriteBundle(racer) {
+    function getRacerSpriteBundle(racer, opts = {}) {
       if (racer.isPlayer || racer.racerId) {
         const choice = RACER_CHOICES.find(r => r.id === (racer.racerId || selectedRacerId)) || RACER_CHOICES[0];
         const cached = racerSpriteCache[choice.id];
+        const runCached = racerRunSheetCache[choice.id];
         return {
           sheet: cached?.processed || null,
           frameData: choice.frames,
+          runSheet: (opts.race && runCached?.processed) ? runCached.processed : null,
+          runFrameData: (opts.race && choice.runFrames) ? choice.runFrames : null,
           runGif: racerGifCache[choice.id] || null
         };
       }
@@ -3024,6 +3053,12 @@
     }
 
     function drawRacerFrame(ctx, x, groundY, animKey, frameIndex, displayHeight, rotation, bundle) {
+      if (bundle?.runSheet && bundle?.runFrameData?.[animKey] && isRunAnimation(animKey)) {
+        return drawSpriteFrame(
+          ctx, x, groundY, animKey, frameIndex, displayHeight, rotation,
+          bundle.runSheet, bundle.runFrameData
+        );
+      }
       if (bundle?.runGif && isRunAnimation(animKey)) {
         return drawRunGifFrame(ctx, x, groundY, displayHeight, rotation, bundle.runGif);
       }
@@ -3424,12 +3459,15 @@
       return Math.min(1.6, Math.max(0.9, speed / 14));
     }
 
-    function getRacerFrame(racer, animKey, speedMod) {
+    function getRacerFrame(racer, animKey, speedMod, opts = {}) {
       if (racer.finished) return 0;
       if (animKey === 'finish') return 0;
-      const bundle = getRacerSpriteBundle(racer);
+      const bundle = getRacerSpriteBundle(racer, opts);
+      const frameData = (opts.race && isRunAnimation(animKey) && bundle.runFrameData)
+        ? bundle.runFrameData
+        : bundle.frameData;
       if (animKey === 'jump') return getJumpFrameIndex(racer, bundle.frameData);
-      return getAnimFrame(animKey, globalAnimTime, racer.animOffset, speedMod, bundle.frameData);
+      return getAnimFrame(animKey, globalAnimTime, racer.animOffset, speedMod, frameData);
     }
 
     function loadTitleArt() {
@@ -4728,16 +4766,17 @@
       drawFinishLine(ctx, W);
       drawTrackDebugOverlay(ctx, W);
       const sorted = [...drawRacers].sort((a, b) => a.position - b.position);
+      const raceOpts = { race: true };
       sorted.forEach((racer) => {
         const pt = getRacerScreenPoint(racer, W);
         const animKey = getRacerAnimation(racer);
         const speedMod = getRacerAnimSpeed(racer);
-        const frame = getRacerFrame(racer, animKey, speedMod);
+        const frame = getRacerFrame(racer, animKey, speedMod, raceOpts);
         const jumpLift = animKey === 'jump' ? getJumpLift(racer, spriteH) : 0;
 
         let spriteTop = pt.y - spriteH;
-        const spriteBundle = getRacerSpriteBundle(racer);
-        if (spriteBundle.sheet || spriteBundle.runGif) {
+        const spriteBundle = getRacerSpriteBundle(racer, raceOpts);
+        if (spriteBundle.sheet || spriteBundle.runSheet || spriteBundle.runGif) {
           const drawn = drawRacerFrame(
             ctx, pt.x, pt.y - jumpLift, animKey, frame, spriteH, pt.tangent, spriteBundle
           );
