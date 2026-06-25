@@ -449,7 +449,16 @@
       text-align: center;
       margin-bottom: 16px;
     }
-    .portrait-box canvas { image-rendering: pixelated; }
+    .portrait-box canvas,
+    .portrait-box .training-portrait {
+      display: block;
+      width: 96px;
+      height: 96px;
+      margin: 0 auto;
+      image-rendering: pixelated;
+      background: #2d1b4e;
+      object-fit: cover;
+    }
     .portrait-box .name { font-size: 10px; color: #ff6eb4; margin-top: 8px; }
     .turn-display {
       font-size: 10px;
@@ -956,7 +965,7 @@
       <div id="training-screen" class="hidden">
         <div class="training-left">
           <div class="portrait-box">
-            <canvas id="portrait-canvas" width="96" height="96"></canvas>
+            <img id="portrait-art" class="training-portrait" src="training-portrait.gif" alt="Training portrait" width="96" height="96">
             <div class="name" id="portrait-name">NYA-RUNNER</div>
           </div>
           <div class="turn-display" id="turn-display">TURN 1 / 10</div>
@@ -1296,6 +1305,7 @@
         id: 'yellow',
         label: 'SUNNY',
         portraitPath: 'portrait-select-sunny.jpg',
+        runGif: 'sunny-run.gif',
         paths: ['catgirl-yellow-transparent.png', 'catgirl-yellow.jpg']
       },
       {
@@ -1397,6 +1407,7 @@
     };
     let currentFrameData = FRAME_DATA_PURPLE;
     let racerSpriteCache = {};
+    let racerGifCache = {};
     let cpuSpriteCache = {};
     let trainingJacksSheet = null;
     let trainingJacksReady = false;
@@ -2426,6 +2437,10 @@
           }
         }
         racerSpriteCache[racer.id] = { sheet: img, processed };
+        if (racer.runGif) {
+          const gif = await loadRacerImage([racer.runGif]);
+          if (gif) racerGifCache[racer.id] = gif;
+        }
         return true;
       })).then(async (results) => {
         const loaded = results.some(Boolean);
@@ -2637,7 +2652,11 @@
       if (racer.isPlayer || racer.racerId) {
         const choice = RACER_CHOICES.find(r => r.id === (racer.racerId || selectedRacerId)) || RACER_CHOICES[0];
         const cached = racerSpriteCache[choice.id];
-        return { sheet: cached?.processed || null, frameData: choice.frames };
+        return {
+          sheet: cached?.processed || null,
+          frameData: choice.frames,
+          runGif: racerGifCache[choice.id] || null
+        };
       }
       const style = CPU_RACER_STYLES.find(s => s.id === racer.cpuStyleId) || CPU_RACER_STYLES[0];
       const cached = cpuSpriteCache[style.id];
@@ -2732,6 +2751,111 @@
       ctx.fillRect(x - 8 * s, y - 1 * s, 2 * s, 1.5 * s);
       ctx.fillStyle = 'rgba(196, 150, 90, 0.4)';
       ctx.fillRect(x - 12 * s, y, 2 * s, s);
+    }
+
+    let runGifScratch = null;
+
+    function removeCornerBackgroundCanvas(canvas, tolerance = 55) {
+      const ctx = canvas.getContext('2d');
+      try {
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+        const w = canvas.width;
+        const h = canvas.height;
+        const bg = [data[0], data[1], data[2]];
+        const isBg = (px) => {
+          const i = px * 4;
+          const diff = Math.abs(data[i] - bg[0])
+            + Math.abs(data[i + 1] - bg[1])
+            + Math.abs(data[i + 2] - bg[2]);
+          return diff < tolerance;
+        };
+        const remove = new Uint8Array(w * h);
+        const queue = [];
+        const tryBg = (x, y) => {
+          const px = y * w + x;
+          if (remove[px] || !isBg(px)) return;
+          remove[px] = 1;
+          queue.push(px);
+        };
+        for (let x = 0; x < w; x++) {
+          tryBg(x, 0);
+          tryBg(x, h - 1);
+        }
+        for (let y = 0; y < h; y++) {
+          tryBg(0, y);
+          tryBg(w - 1, y);
+        }
+        while (queue.length) {
+          const px = queue.pop();
+          const x = px % w;
+          const y = (px / w) | 0;
+          if (x > 0) tryBg(x - 1, y);
+          if (x < w - 1) tryBg(x + 1, y);
+          if (y > 0) tryBg(x, y - 1);
+          if (y < h - 1) tryBg(x, y + 1);
+        }
+        for (let px = 0; px < w * h; px++) {
+          if (remove[px]) data[px * 4 + 3] = 0;
+        }
+        ctx.putImageData(imageData, 0, 0);
+      } catch (err) {}
+    }
+
+    function isRunAnimation(animKey) {
+      return animKey === 'runFull' || animKey === 'runStart';
+    }
+
+    function drawRunGifFrame(ctx, x, groundY, displayHeight, rotation, gifImg, frameIndex = 0) {
+      if (!gifImg || !gifImg.complete || !gifImg.naturalWidth) {
+        return { height: displayHeight, top: groundY - displayHeight };
+      }
+
+      const natW = gifImg.naturalWidth;
+      const natH = gifImg.naturalHeight;
+      if (!runGifScratch || runGifScratch.width !== natW || runGifScratch.height !== natH) {
+        runGifScratch = document.createElement('canvas');
+        runGifScratch.width = natW;
+        runGifScratch.height = natH;
+      }
+      const sctx = runGifScratch.getContext('2d');
+      sctx.clearRect(0, 0, natW, natH);
+      sctx.drawImage(gifImg, 0, 0);
+      removeCornerBackgroundCanvas(runGifScratch);
+
+      const scale = displayHeight / natH;
+      const dw = natW * scale;
+      const dh = displayHeight;
+      const phase = (globalAnimTime * 12 + frameIndex * 0.4) * Math.PI * 2;
+      const bobY = Math.sin(phase) * 2.5 * scale;
+      const lean = Math.sin(phase) * 0.06;
+      const scaleY = 1 + Math.sin(phase * 2) * 0.06;
+      const scaleX = 1 - Math.sin(phase * 2) * 0.04;
+
+      ctx.save();
+      ctx.translate(x, groundY - bobY);
+      ctx.rotate(rotation + lean);
+      ctx.scale(scaleX, scaleY);
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(runGifScratch, -dw / 2, -dh, dw, dh);
+      if (Math.floor(globalAnimTime * 12) % 2 === 0) {
+        drawDustPuff(ctx, -dw * 0.12, -scale * 2, scale);
+      }
+      ctx.restore();
+      return { height: dh, top: groundY - bobY - dh };
+    }
+
+    function drawRacerFrame(ctx, x, groundY, animKey, frameIndex, displayHeight, rotation, bundle) {
+      if (bundle?.runGif && isRunAnimation(animKey)) {
+        return drawRunGifFrame(ctx, x, groundY, displayHeight, rotation, bundle.runGif, frameIndex);
+      }
+      if (bundle?.sheet && bundle?.frameData?.[animKey]) {
+        return drawSpriteFrame(
+          ctx, x, groundY, animKey, frameIndex, displayHeight, rotation,
+          bundle.sheet, bundle.frameData
+        );
+      }
+      return { height: displayHeight, top: groundY - displayHeight };
     }
 
     function drawSpriteFrame(ctx, x, groundY, animKey, frameIndex, displayHeight, rotation = 0, sheet = processedSheet, frameData = currentFrameData) {
@@ -3155,15 +3279,27 @@
       });
     }
 
+    const TRAINING_PORTRAIT_PATHS = [
+      'training-portrait.gif',
+      'training-portrait.jpg',
+      'training-portrait.png'
+    ];
+
     function drawPortrait() {
-      const canvas = document.getElementById('portrait-canvas');
-      const ctx = canvas.getContext('2d');
-      ctx.imageSmoothingEnabled = false;
-      ctx.fillStyle = '#1a0a2e';
-      ctx.fillRect(0, 0, 96, 96);
-      if (spritesReady) {
-        drawSpriteFrame(ctx, 48, 88, 'portrait', 0, 72);
+      const img = document.getElementById('portrait-art');
+      if (!img || img.dataset.loaded === '1') return;
+      if (img.complete && img.naturalWidth > 0) {
+        img.dataset.loaded = '1';
+        return;
       }
+      let pathIndex = 0;
+      const tryNext = () => {
+        if (pathIndex >= TRAINING_PORTRAIT_PATHS.length) return;
+        img.onerror = () => { pathIndex++; tryNext(); };
+        img.onload = () => { img.dataset.loaded = '1'; };
+        img.src = TRAINING_PORTRAIT_PATHS[pathIndex];
+      };
+      if (!img.getAttribute('src')) tryNext();
     }
 
     // --- Training Phase ---
@@ -3367,7 +3503,7 @@
         const groundY = Math.floor(H * 0.78) + 8;
         const breathe = Math.sin(elapsed * 2.2) * 2;
 
-        if (bundle.sheet && bundle.frameData?.[trainingAnimState.animKey]) {
+        if ((bundle.sheet || bundle.runGif) && bundle.frameData?.[trainingAnimState.animKey]) {
           const frame = getAnimFrame(
             trainingAnimState.animKey,
             elapsed,
@@ -3375,9 +3511,8 @@
             trainingAnimState.speedMod,
             bundle.frameData
           );
-          drawSpriteFrame(
-            ctx, x, groundY - breathe, trainingAnimState.animKey, frame, spriteH, 0,
-            bundle.sheet, bundle.frameData
+          drawRacerFrame(
+            ctx, x, groundY - breathe, trainingAnimState.animKey, frame, spriteH, 0, bundle
           );
         }
 
@@ -3399,7 +3534,7 @@
       const groundY = trackTop + 28;
       const x = W * 0.2 + progress * W * 0.55;
 
-      if (bundle.sheet && bundle.frameData?.[trainingAnimState.animKey]) {
+      if ((bundle.sheet || bundle.runGif) && bundle.frameData?.[trainingAnimState.animKey]) {
         const frame = getAnimFrame(
           trainingAnimState.animKey,
           elapsed,
@@ -3407,9 +3542,8 @@
           trainingAnimState.speedMod,
           bundle.frameData
         );
-        drawSpriteFrame(
-          ctx, x, groundY, trainingAnimState.animKey, frame, spriteH, 0,
-          bundle.sheet, bundle.frameData
+        drawRacerFrame(
+          ctx, x, groundY, trainingAnimState.animKey, frame, spriteH, 0, bundle
         );
       }
 
@@ -4425,10 +4559,9 @@
 
         let spriteTop = pt.y - spriteH;
         const spriteBundle = getRacerSpriteBundle(racer);
-        if (spriteBundle.sheet) {
-          const drawn = drawSpriteFrame(
-            ctx, pt.x, pt.y - jumpLift, animKey, frame, spriteH, pt.tangent,
-            spriteBundle.sheet, spriteBundle.frameData
+        if (spriteBundle.sheet || spriteBundle.runGif) {
+          const drawn = drawRacerFrame(
+            ctx, pt.x, pt.y - jumpLift, animKey, frame, spriteH, pt.tangent, spriteBundle
           );
           spriteTop = drawn.top;
         }
