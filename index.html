@@ -2642,7 +2642,7 @@
           if (runImg) {
             let runProcessed = runImg;
             try {
-              runProcessed = removeSpriteBackground(runImg);
+              runProcessed = removeRunSheetBackground(runImg);
             } catch (err) {
               runProcessed = runImg;
             }
@@ -2854,6 +2854,67 @@
         return canvas;
       } catch (err) {
         return img;
+      }
+    }
+
+    function isRunSheetBgPixel(r, g, b) {
+      const diff = Math.abs(r - 23) + Math.abs(g - 24) + Math.abs(b - 44);
+      if (diff < 80) return true;
+      if (b >= r && b >= g && r < 58 && g < 65 && b < 100 && (r + g + b) < 185) return true;
+      return false;
+    }
+
+    function removeDarkFringe(data, w, h, passes = 2) {
+      for (let pass = 0; pass < passes; pass++) {
+        const alpha = new Uint8Array(w * h);
+        for (let px = 0; px < w * h; px++) alpha[px] = data[px * 4 + 3];
+        for (let y = 0; y < h; y++) {
+          for (let x = 0; x < w; x++) {
+            const px = y * w + x;
+            const i = px * 4;
+            if (alpha[px] === 0) continue;
+            let transparentNeighbors = 0;
+            for (let oy = -1; oy <= 1; oy++) {
+              for (let ox = -1; ox <= 1; ox++) {
+                if (!ox && !oy) continue;
+                const nx = x + ox;
+                const ny = y + oy;
+                if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+                if (alpha[ny * w + nx] === 0) transparentNeighbors++;
+              }
+            }
+            if (transparentNeighbors > 0 && isRunSheetBgPixel(data[i], data[i + 1], data[i + 2])) {
+              data[i + 3] = 0;
+            }
+          }
+        }
+      }
+    }
+
+    function removeRunSheetBackground(img) {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+      try {
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+        const w = canvas.width;
+        const h = canvas.height;
+
+        for (let px = 0; px < w * h; px++) {
+          const i = px * 4;
+          if (isRunSheetBgPixel(data[i], data[i + 1], data[i + 2])) {
+            data[i + 3] = 0;
+          }
+        }
+
+        removeDarkFringe(data, w, h, 3);
+        ctx.putImageData(imageData, 0, 0);
+        return canvas;
+      } catch (err) {
+        return removeSpriteBackground(img, 80);
       }
     }
 
