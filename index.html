@@ -3378,8 +3378,19 @@
       ctx.fillRect(x - span, groundY - 2, span * 2, 2);
     }
 
+    function getLaneSpacingNorm() {
+      let minGap = 1;
+      for (let i = 1; i < LANE_CENTERS_NORM.length; i++) {
+        minGap = Math.min(minGap, LANE_CENTERS_NORM[i] - LANE_CENTERS_NORM[i - 1]);
+      }
+      return minGap;
+    }
+
     function getRunnerSpriteHeight() {
-      return Math.max(20, Math.min(44, trackDrawRect.dh * 0.20));
+      const dh = trackDrawRect.dh || 120;
+      const laneSpacing = dh * getLaneSpacingNorm();
+      // ~120% of lane center spacing fills the visible lane band on the track art.
+      return Math.max(36, Math.floor(laneSpacing * 1.2));
     }
 
     function drawHurdles(ctx, W, spriteH) {
