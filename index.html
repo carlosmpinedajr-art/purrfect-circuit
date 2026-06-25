@@ -2400,6 +2400,131 @@
     }
 
     // --- Sprite Sheet ---
+    function getGifPreloadPool() {
+      let pool = document.getElementById('gif-preload-pool');
+      if (!pool) {
+        pool = document.createElement('div');
+        pool.id = 'gif-preload-pool';
+        pool.setAttribute('aria-hidden', 'true');
+        pool.style.cssText = 'position:fixed;left:0;top:0;width:1px;height:1px;overflow:hidden;opacity:0.001;pointer-events:none;z-index:-1;';
+        document.body.appendChild(pool);
+      }
+      return pool;
+    }
+
+    // Browsers only advance animated GIFs attached to the DOM — off-DOM Image() stays on frame 1.
+    function loadDomAnimatedGif(path) {
+      return new Promise((resolve) => {
+        const img = document.createElement('img');
+        img.decoding = 'async';
+        img.alt = '';
+        img.onload = () => resolve(img);
+        img.onerror = () => {
+          img.remove();
+          resolve(null);
+        };
+        getGifPreloadPool().appendChild(img);
+        img.src = path;
+      });
+    }
+
+    function quickFrameHash(ctx, w, h) {
+      const data = ctx.getImageData(0, 0, w, h).data;
+      let hash = 2166136261;
+      for (let i = 0; i < data.length; i += 64) {
+        hash ^= data[i];
+        hash = Math.imul(hash, 16777619);
+      }
+      return hash >>> 0;
+    }
+
+    function cloneCanvasFrame(source) {
+      const copy = document.createElement('canvas');
+      copy.width = source.width;
+      copy.height = source.height;
+      copy.getContext('2d').drawImage(source, 0, 0);
+      return copy;
+    }
+
+    function bakeAnimatedGif(gifImg, maxCaptureMs = 6000) {
+      const w = gifImg.naturalWidth;
+      const h = gifImg.naturalHeight;
+      if (!w || !h) return Promise.resolve(null);
+
+      const scratch = document.createElement('canvas');
+      scratch.width = w;
+      scratch.height = h;
+      const sctx = scratch.getContext('2d', { willReadFrequently: true });
+
+      return new Promise((resolve) => {
+        const frames = [];
+        const delays = [];
+        const seenHashes = new Set();
+        let lastHash = null;
+        let lastFrameCanvas = null;
+        let lastChange = performance.now();
+        const start = performance.now();
+
+        function resolveBaked() {
+          if (!frames.length) {
+            resolve(null);
+            return;
+          }
+          const totalDuration = delays.reduce((sum, ms) => sum + ms, 0);
+          resolve({ frames, delays, width: w, height: h, totalDuration });
+        }
+
+        function pushFrame(canvas, delayMs) {
+          const processed = cloneCanvasFrame(canvas);
+          removeCornerBackgroundCanvas(processed);
+          frames.push(processed);
+          delays.push(Math.max(40, delayMs));
+        }
+
+        function tick() {
+          const now = performance.now();
+          sctx.clearRect(0, 0, w, h);
+          sctx.drawImage(gifImg, 0, 0);
+          const hash = quickFrameHash(sctx, w, h);
+
+          if (lastHash === null) {
+            lastHash = hash;
+            seenHashes.add(hash);
+            lastFrameCanvas = cloneCanvasFrame(scratch);
+            lastChange = now;
+          } else if (hash !== lastHash) {
+            pushFrame(lastFrameCanvas, now - lastChange);
+
+            if (seenHashes.has(hash)) {
+              resolveBaked();
+              return;
+            }
+
+            seenHashes.add(hash);
+            lastHash = hash;
+            lastFrameCanvas = cloneCanvasFrame(scratch);
+            lastChange = now;
+          }
+
+          if (now - start >= maxCaptureMs) {
+            if (lastFrameCanvas) pushFrame(lastFrameCanvas, now - lastChange);
+            resolveBaked();
+            return;
+          }
+          requestAnimationFrame(tick);
+        }
+
+        requestAnimationFrame(tick);
+      });
+    }
+
+    async function loadRunGifAsset(path) {
+      const gifImg = await loadDomAnimatedGif(path);
+      if (!gifImg) return null;
+      const baked = await bakeAnimatedGif(gifImg);
+      return baked;
+    }
+
     function loadRacerImage(paths) {
       return new Promise((resolve) => {
         let pathIndex = 0;
@@ -2438,8 +2563,8 @@
         }
         racerSpriteCache[racer.id] = { sheet: img, processed };
         if (racer.runGif) {
-          const gif = await loadRacerImage([racer.runGif]);
-          if (gif) racerGifCache[racer.id] = gif;
+          const baked = await loadRunGifAsset(racer.runGif);
+          if (baked) racerGifCache[racer.id] = baked;
         }
         return true;
       })).then(async (results) => {
@@ -2753,8 +2878,6 @@
       ctx.fillRect(x - 12 * s, y, 2 * s, s);
     }
 
-    let runGifScratch = null;
-
     function removeCornerBackgroundCanvas(canvas, tolerance = 55) {
       const ctx = canvas.getContext('2d');
       try {
@@ -2806,48 +2929,45 @@
       return animKey === 'runFull' || animKey === 'runStart';
     }
 
-    function drawRunGifFrame(ctx, x, groundY, displayHeight, rotation, gifImg, frameIndex = 0) {
-      if (!gifImg || !gifImg.complete || !gifImg.naturalWidth) {
+    function getBakedGifFrameIndex(baked, elapsedMs) {
+      if (!baked?.frames?.length) return 0;
+      const loopT = elapsedMs % baked.totalDuration;
+      let acc = 0;
+      for (let i = 0; i < baked.delays.length; i++) {
+        acc += baked.delays[i];
+        if (loopT < acc) return i;
+      }
+      return baked.frames.length - 1;
+    }
+
+    function drawRunGifFrame(ctx, x, groundY, displayHeight, rotation, bakedGif) {
+      if (!bakedGif?.frames?.length) {
         return { height: displayHeight, top: groundY - displayHeight };
       }
 
-      const natW = gifImg.naturalWidth;
-      const natH = gifImg.naturalHeight;
-      if (!runGifScratch || runGifScratch.width !== natW || runGifScratch.height !== natH) {
-        runGifScratch = document.createElement('canvas');
-        runGifScratch.width = natW;
-        runGifScratch.height = natH;
-      }
-      const sctx = runGifScratch.getContext('2d');
-      sctx.clearRect(0, 0, natW, natH);
-      sctx.drawImage(gifImg, 0, 0);
-      removeCornerBackgroundCanvas(runGifScratch);
-
+      const frameIdx = getBakedGifFrameIndex(bakedGif, performance.now());
+      const frameCanvas = bakedGif.frames[frameIdx] || bakedGif.frames[0];
+      const natW = bakedGif.width;
+      const natH = bakedGif.height;
       const scale = displayHeight / natH;
       const dw = natW * scale;
       const dh = displayHeight;
-      const phase = (globalAnimTime * 12 + frameIndex * 0.4) * Math.PI * 2;
-      const bobY = Math.sin(phase) * 2.5 * scale;
-      const lean = Math.sin(phase) * 0.06;
-      const scaleY = 1 + Math.sin(phase * 2) * 0.06;
-      const scaleX = 1 - Math.sin(phase * 2) * 0.04;
 
       ctx.save();
-      ctx.translate(x, groundY - bobY);
-      ctx.rotate(rotation + lean);
-      ctx.scale(scaleX, scaleY);
+      ctx.translate(x, groundY);
+      ctx.rotate(rotation);
       ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(runGifScratch, -dw / 2, -dh, dw, dh);
-      if (Math.floor(globalAnimTime * 12) % 2 === 0) {
+      ctx.drawImage(frameCanvas, -dw / 2, -dh, dw, dh);
+      if (frameIdx % 2 === 0) {
         drawDustPuff(ctx, -dw * 0.12, -scale * 2, scale);
       }
       ctx.restore();
-      return { height: dh, top: groundY - bobY - dh };
+      return { height: dh, top: groundY - dh };
     }
 
     function drawRacerFrame(ctx, x, groundY, animKey, frameIndex, displayHeight, rotation, bundle) {
       if (bundle?.runGif && isRunAnimation(animKey)) {
-        return drawRunGifFrame(ctx, x, groundY, displayHeight, rotation, bundle.runGif, frameIndex);
+        return drawRunGifFrame(ctx, x, groundY, displayHeight, rotation, bundle.runGif);
       }
       if (bundle?.sheet && bundle?.frameData?.[animKey]) {
         return drawSpriteFrame(
