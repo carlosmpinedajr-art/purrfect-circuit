@@ -1305,7 +1305,7 @@
         id: 'yellow',
         label: 'SUNNY',
         portraitPath: 'portrait-select-sunny.jpg',
-        runSheet: 'sunny-run-sprites.jpg',
+        runSheet: ['sunny-run-sprites.png', 'sunny-run-sprites.jpg'],
         paths: ['catgirl-yellow-transparent.png', 'catgirl-yellow.jpg']
       },
       {
@@ -1351,10 +1351,10 @@
     };
 
     const SUNNY_RUN_CYCLE = [
-      { sx: 53,  sy: 140, sw: 203, sh: 252, feet: 391 },
-      { sx: 256, sy: 140, sw: 229, sh: 252, feet: 391 },
-      { sx: 516, sy: 140, sw: 191, sh: 252, feet: 391 },
-      { sx: 773, sy: 140, sw: 157, sh: 252, feet: 391 }
+      { sx: 53,  sy: 131, sw: 203, sh: 261, feet: 391 },
+      { sx: 256, sy: 131, sw: 229, sh: 258, feet: 388 },
+      { sx: 516, sy: 182, sw: 191, sh: 210, feet: 391 },
+      { sx: 773, sy: 182, sw: 156, sh: 207, feet: 388 }
     ];
 
     const FRAME_DATA_SUNNY_RUN = {
@@ -2638,13 +2638,17 @@
         }
         racerSpriteCache[racer.id] = { sheet: img, processed };
         if (racer.runSheet) {
-          const runImg = await loadRacerImage([racer.runSheet]);
+          const runPaths = Array.isArray(racer.runSheet) ? racer.runSheet : [racer.runSheet];
+          const runImg = await loadRacerImage(runPaths);
           if (runImg) {
+            const usedPng = typeof runImg.src === 'string' && /\.png(\?|$)/i.test(runImg.src);
             let runProcessed = runImg;
-            try {
-              runProcessed = removeRunSheetBackground(runImg);
-            } catch (err) {
-              runProcessed = runImg;
+            if (!usedPng) {
+              try {
+                runProcessed = removeRunSheetBackground(runImg);
+              } catch (err) {
+                runProcessed = runImg;
+              }
             }
             racerRunSheetCache[racer.id] = { sheet: runImg, processed: runProcessed };
           }
@@ -2864,6 +2868,16 @@
       return false;
     }
 
+    function zeroTransparentRgb(data) {
+      for (let i = 0; i < data.length; i += 4) {
+        if (data[i + 3] === 0) {
+          data[i] = 0;
+          data[i + 1] = 0;
+          data[i + 2] = 0;
+        }
+      }
+    }
+
     function removeDarkFringe(data, w, h, passes = 2) {
       for (let pass = 0; pass < passes; pass++) {
         const alpha = new Uint8Array(w * h);
@@ -2884,6 +2898,9 @@
               }
             }
             if (transparentNeighbors > 0 && isRunSheetBgPixel(data[i], data[i + 1], data[i + 2])) {
+              data[i] = 0;
+              data[i + 1] = 0;
+              data[i + 2] = 0;
               data[i + 3] = 0;
             }
           }
@@ -2906,11 +2923,15 @@
         for (let px = 0; px < w * h; px++) {
           const i = px * 4;
           if (isRunSheetBgPixel(data[i], data[i + 1], data[i + 2])) {
+            data[i] = 0;
+            data[i + 1] = 0;
+            data[i + 2] = 0;
             data[i + 3] = 0;
           }
         }
 
         removeDarkFringe(data, w, h, 3);
+        zeroTransparentRgb(data);
         ctx.putImageData(imageData, 0, 0);
         return canvas;
       } catch (err) {
@@ -3117,7 +3138,7 @@
       if (bundle?.runSheet && bundle?.runFrameData?.[animKey] && isRunAnimation(animKey)) {
         return drawSpriteFrame(
           ctx, x, groundY, animKey, frameIndex, displayHeight, rotation,
-          bundle.runSheet, bundle.runFrameData
+          bundle.runSheet, bundle.runFrameData, { tightRunCrop: true }
         );
       }
       if (bundle?.runGif && isRunAnimation(animKey)) {
@@ -3132,7 +3153,7 @@
       return { height: displayHeight, top: groundY - displayHeight };
     }
 
-    function drawSpriteFrame(ctx, x, groundY, animKey, frameIndex, displayHeight, rotation = 0, sheet = processedSheet, frameData = currentFrameData) {
+    function drawSpriteFrame(ctx, x, groundY, animKey, frameIndex, displayHeight, rotation = 0, sheet = processedSheet, frameData = currentFrameData, opts = {}) {
       if (!sheet || !frameData?.[animKey]) return { height: displayHeight, top: groundY - displayHeight };
       const frames = frameData[animKey];
       const frame = frames[frameIndex % frames.length];
@@ -3141,12 +3162,13 @@
       const dh = frame.sh * scale;
       const feetFromTop = frame.feet - frame.sy + 1;
       const isRunning = animKey === 'runFull' || animKey === 'runStart';
+      const tightRunCrop = !!opts.tightRunCrop;
 
       let bobY = 0;
       let lean = 0;
       let scaleX = 1;
       let scaleY = 1;
-      if (isRunning) {
+      if (isRunning && !tightRunCrop) {
         const phase = getRunPhase(animKey, frameIndex, frameData) * Math.PI * 2;
         bobY = Math.sin(phase) * 2.5 * scale;
         lean = Math.sin(phase) * 0.06;
