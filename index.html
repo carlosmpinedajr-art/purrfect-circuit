@@ -1524,7 +1524,8 @@
       showScreen('setup-screen');
       renderRacerOptions();
       setRacerNameInputFromChoice(selectedRacerId);
-      updateSetupStartButton();
+      if (spritesReady) enableStartButton(true);
+      else updateSetupStartButton();
       playSetupBgm();
     }
 
@@ -2511,18 +2512,78 @@
             resolveBaked();
             return;
           }
-          requestAnimationFrame(tick);
+          setTimeout(tick, 100);
         }
 
-        requestAnimationFrame(tick);
+        setTimeout(tick, 100);
       });
     }
 
+    async function decodeRunGifWithImageDecoder(path) {
+      if (typeof ImageDecoder === 'undefined') return null;
+      const resp = await fetch(path);
+      if (!resp.ok) return null;
+      const buf = await resp.arrayBuffer();
+      const decoder = new ImageDecoder({ data: buf, type: 'image/gif' });
+      await decoder.tracks.ready;
+      const track = decoder.tracks[0];
+      if (!track?.frameCount) {
+        decoder.close();
+        return null;
+      }
+
+      const frames = [];
+      const delays = [];
+      let width = 0;
+      let height = 0;
+
+      for (let i = 0; i < track.frameCount; i++) {
+        const { image } = await decoder.decode({ frameIndex: i });
+        width = image.displayWidth;
+        height = image.displayHeight;
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext('2d').drawImage(image, 0, 0);
+        const delayMs = image.duration && image.duration > 0
+          ? Math.max(40, image.duration / 1000)
+          : 100;
+        image.close();
+        removeCornerBackgroundCanvas(canvas);
+        frames.push(canvas);
+        delays.push(delayMs);
+      }
+
+      decoder.close();
+      if (!frames.length) return null;
+      return {
+        frames,
+        delays,
+        width,
+        height,
+        totalDuration: delays.reduce((sum, ms) => sum + ms, 0)
+      };
+    }
+
     async function loadRunGifAsset(path) {
+      try {
+        const decoded = await decodeRunGifWithImageDecoder(path);
+        if (decoded) return decoded;
+      } catch (err) {
+        console.warn('ImageDecoder run GIF failed:', err);
+      }
+
       const gifImg = await loadDomAnimatedGif(path);
       if (!gifImg) return null;
-      const baked = await bakeAnimatedGif(gifImg);
-      return baked;
+      return bakeAnimatedGif(gifImg, 2500);
+    }
+
+    function preloadRunGif(racerId, path) {
+      loadRunGifAsset(path)
+        .then((baked) => {
+          if (baked) racerGifCache[racerId] = baked;
+        })
+        .catch((err) => console.warn('Run GIF preload failed:', err));
     }
 
     function loadRacerImage(paths) {
@@ -2562,10 +2623,7 @@
           }
         }
         racerSpriteCache[racer.id] = { sheet: img, processed };
-        if (racer.runGif) {
-          const baked = await loadRunGifAsset(racer.runGif);
-          if (baked) racerGifCache[racer.id] = baked;
-        }
+        if (racer.runGif) preloadRunGif(racer.id, racer.runGif);
         return true;
       })).then(async (results) => {
         const loaded = results.some(Boolean);
@@ -4921,11 +4979,18 @@
       tryReconnectSession();
     }
 
-    Promise.all([loadSprites(), loadTrack(), loadHurdle(), loadTrainingJacksSprite()]).then(([spritesLoaded]) => {
-      renderRacerOptions();
-      enableStartButton(spritesLoaded);
-      playTitleBgm();
-    });
+    Promise.all([loadSprites(), loadTrack(), loadHurdle(), loadTrainingJacksSprite()])
+      .then(([spritesLoaded]) => {
+        renderRacerOptions();
+        enableStartButton(spritesLoaded);
+        playTitleBgm();
+      })
+      .catch((err) => {
+        console.error('Asset load failed:', err);
+        renderRacerOptions();
+        enableStartButton(true);
+        playTitleBgm();
+      });
   </script>
 </body>
 </html>
