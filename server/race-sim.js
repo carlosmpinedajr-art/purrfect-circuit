@@ -8,7 +8,9 @@ const RACE_LENGTH = LAP_LENGTH * TOTAL_LAPS;
 const STAMINA_CHECK_POINT = 0.75;
 const HURDLE_PROGRESSES = [0.15, 0.60];
 const HURDLE_JUMP_LEAD = 24;
-const HURDLE_CLEAR_TRAIL = 12;
+const HURDLE_CLEAR_TRAIL = 8;
+const HURDLE_JUMP_DURATION = 0.5;
+const HURDLE_JUMP_MIN_HALF = 18;
 const HURDLE_SPEED_MULTIPLIER = 0.5;
 const HURDLE_RECOVERY_BASE_SEC = 3;
 const CPU_STAT_MIN = 1;
@@ -52,6 +54,55 @@ function getHurdleZones() {
 
 function createHurdlesClearedState() {
   return HURDLE_PROGRESSES.map(() => false);
+}
+
+function createHurdleJumpTriggeredState() {
+  return HURDLE_PROGRESSES.map(() => false);
+}
+
+function getHurdleJumpHalfDistance(racer) {
+  const speed = getRacerMovementSpeed(racer);
+  return Math.max(HURDLE_JUMP_MIN_HALF, speed * HURDLE_JUMP_DURATION * 0.5);
+}
+
+function shouldTriggerHurdleJump(racer, zone) {
+  const halfDist = getHurdleJumpHalfDistance(racer);
+  return racer.position >= zone.position - halfDist;
+}
+
+function beginHurdleJump(racer, hurdleIndex) {
+  const zone = getHurdleZones()[hurdleIndex];
+  const halfDist = getHurdleJumpHalfDistance(racer);
+  racer.jumping = true;
+  racer.jumpTimer = 0;
+  racer.activeHurdleIndex = hurdleIndex;
+  racer.jumpTakeoffPos = zone.position - halfDist;
+  racer.jumpHurdlePos = zone.position;
+  racer.jumpLandPos = zone.position + halfDist;
+
+  const span = racer.jumpLandPos - racer.jumpTakeoffPos;
+  if (span > 0 && racer.position > racer.jumpTakeoffPos) {
+const traveled = Math.min(span, racer.position - racer.jumpTakeoffPos);
+const progress = traveled / span;
+racer.jumpTimer = Math.min(
+  HURDLE_JUMP_DURATION * 0.92,
+  progress * HURDLE_JUMP_DURATION
+);
+  }
+}
+
+function finishHurdleJump(racer) {
+  racer.jumping = false;
+  racer.activeHurdleIndex = -1;
+  racer.jumpTimer = HURDLE_JUMP_DURATION;
+}
+
+function tryStartPendingHurdleJump(racer) {
+  if (racer.jumping || racer.finished) return;
+  if (!Number.isFinite(racer.pendingHurdleJumpIndex) || racer.pendingHurdleJumpIndex < 0) return;
+  const idx = racer.pendingHurdleJumpIndex;
+  racer.pendingHurdleJumpIndex = -1;
+  beginHurdleJump(racer, idx);
 }
 
 function allHurdlesCleared(racer) {
@@ -158,6 +209,8 @@ function createRacerState(entry) {
     passingCooldown: 0,
     animOffset: entry.animOffset || 0,
     hurdlesCleared: createHurdlesClearedState(),
+    hurdleJumpTriggered: createHurdleJumpTriggeredState(),
+    pendingHurdleJumpIndex: -1,
     activeHurdleIndex: -1,
     jumping: false,
     jumpTimer: 0,
@@ -240,17 +293,26 @@ function updateHurdleForRacer(racer, dt, events) {
     }
   }
 
+  if (!racer.hurdleJumpTriggered) {
+    racer.hurdleJumpTriggered = createHurdleJumpTriggeredState();
+  }
+
   const zones = getHurdleZones();
-  let inJumpZone = false;
 
   for (let i = 0; i < zones.length; i++) {
-    if (racer.hurdlesCleared[i]) continue;
     const zone = zones[i];
 
-    if (racer.position >= zone.clearPos) {
+    if (!racer.hurdleJumpTriggered[i] && shouldTriggerHurdleJump(racer, zone)) {
+      racer.hurdleJumpTriggered[i] = true;
+      if (!racer.jumping) {
+        beginHurdleJump(racer, i);
+      } else if (racer.activeHurdleIndex !== i) {
+        racer.pendingHurdleJumpIndex = i;
+      }
+    }
+
+    if (!racer.hurdlesCleared[i] && racer.position >= zone.clearPos) {
       racer.hurdlesCleared[i] = true;
-      racer.jumping = false;
-      racer.activeHurdleIndex = -1;
       racer.hurdleRecoveryTarget = racer.currentSpeed;
       racer.currentSpeed = racer.hurdleRecoveryTarget * HURDLE_SPEED_MULTIPLIER;
       racer.hurdleRecovering = true;
@@ -261,27 +323,20 @@ function updateHurdleForRacer(racer, dt, events) {
         const secs = racer.hurdleRecoveryDuration.toFixed(1);
         pushEvent(events, racer, `Hurdle ${i + 1} cleared! -50% speed, recovering in ${secs}s`);
       }
-      continue;
-    }
-
-    if (racer.position >= zone.jumpStart && racer.position < zone.clearPos) {
-      if (!racer.jumping) racer.jumpTimer = 0;
-      racer.jumping = true;
-      racer.activeHurdleIndex = i;
-      racer.jumpTimer += dt;
-      inJumpZone = true;
-      break;
     }
   }
 
-  if (!inJumpZone) {
-    racer.jumping = false;
-    racer.activeHurdleIndex = -1;
+  if (racer.jumping) {
+    racer.jumpTimer += dt;
+    if (racer.jumpTimer >= HURDLE_JUMP_DURATION) {
+      finishHurdleJump(racer);
+      tryStartPendingHurdleJump(racer);
+    }
   }
 
-  if (allHurdlesCleared(racer)) {
-    racer.jumping = false;
+  if (allHurdlesCleared(racer) && !racer.jumping) {
     racer.activeHurdleIndex = -1;
+    racer.pendingHurdleJumpIndex = -1;
   }
 }
 

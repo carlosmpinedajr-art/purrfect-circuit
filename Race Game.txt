@@ -23,3 +23,36 @@ The first to cross the finish line is the winner.
 The track:
 It is a medium distance track. Stamina requirement is 15.
 
+-----
+Build archetypes (why 4 stats is fun)
+
+┌────────────┬─────────────────────────┬─────────────────────────────┐
+│ Build      │ Train mostly            │ Identity                    │
+├────────────┼─────────────────────────┼─────────────────────────────┤
+│ Sprinter   │ Speed + Burst-ish speed │ Win early, pray for stamina │
+├────────────┼─────────────────────────┼─────────────────────────────┤
+│ Miler      │ Stamina + Focus         │ Fade-proof, steady MPH      │
+├────────────┼─────────────────────────┼─────────────────────────────┤
+│ Hurdler    │ Agility + Focus         │ Clean 15% / 60% sections    │
+├────────────┼─────────────────────────┼─────────────────────────────┤
+│ Brawler    │ Speed + Agility         │ Pass everyone, chaotic      │
+├────────────┼─────────────────────────┼─────────────────────────────┤
+│ Zen runner │ Focus + Stamina         │ Never panics, grinds back   │
+└────────────┴─────────────────────────┴─────────────────────────────┘
+
+CPUs with random 20-point totals would start having personalities if Focus is in the mix.
+--------
+F. Lane discipline (simple positional rule)
+Racers drift slightly when tired or flustered (visual wobble, tiny speed loss).
+Focus keeps you “in the lane” — less random speed variance:
+
+speed *= 0.95 + random * 0.1   // current
+// Focus high:
+speed *= 0.98 + random * 0.04  // steadier pacing
+
+Low Focus = fast but chaotic; high Focus = predictable telegraph for players.
+--
+leave lobby button
+bug time same when skip
+placements wrong
+when try to play again, no new room numnber, have to make clear cookie to make work.

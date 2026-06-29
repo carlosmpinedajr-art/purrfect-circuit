@@ -1213,17 +1213,20 @@
     const PACE_FOCUS_SCALE = 15;
     const HURDLE_PROGRESSES = [0.15, 0.60];
     const HURDLE_JUMP_LEAD = 24;
-    const HURDLE_CLEAR_TRAIL = 12;
-    const HURDLE_JUMP_DURATION = 0.32;
-    const HURDLE_JUMP_LIFT = 0.2;
-    const HURDLE_WIDTH_SCALE = 0.5;
+    const HURDLE_CLEAR_TRAIL = 8;
+    const HURDLE_JUMP_DURATION = 0.5;
+    const HURDLE_JUMP_MIN_HALF = 18;
+    const HURDLE_JUMP_LIFT = 0.5;
+    const HURDLE_WIDTH_SCALE = 1;
+    const HURDLE_HEIGHT_SCALE = 0.72;
     const HURDLE_SPEED_MULTIPLIER = 0.5;
     const HURDLE_RECOVERY_BASE_SEC = 3;
     const HURDLE_SPRITE = {
-      sx: 0, sy: 0, sw: 630, sh: 552,
-      feetX: 315, feetY: 551
+      sx: 0, sy: 0, sw: 120, sh: 800,
+      feetX: 60, feetY: 800
     };
     const HURDLE_PATHS = [
+      'hurdle-sprite-new.jpg',
       'hurdle-sprite.png',
       'hurdle.png',
       'hurdle.jpg'
@@ -1244,6 +1247,55 @@
 
     function createHurdlesClearedState() {
       return HURDLE_PROGRESSES.map(() => false);
+    }
+
+    function createHurdleJumpTriggeredState() {
+      return HURDLE_PROGRESSES.map(() => false);
+    }
+
+    function getHurdleJumpHalfDistance(racer) {
+      const speed = getRacerMovementSpeed(racer);
+      return Math.max(HURDLE_JUMP_MIN_HALF, speed * HURDLE_JUMP_DURATION * 0.5);
+    }
+
+    function shouldTriggerHurdleJump(racer, zone) {
+      const halfDist = getHurdleJumpHalfDistance(racer);
+      return racer.position >= zone.position - halfDist;
+    }
+
+    function beginHurdleJump(racer, hurdleIndex) {
+      const zone = getHurdleZones()[hurdleIndex];
+      const halfDist = getHurdleJumpHalfDistance(racer);
+      racer.jumping = true;
+      racer.jumpTimer = 0;
+      racer.activeHurdleIndex = hurdleIndex;
+      racer.jumpTakeoffPos = zone.position - halfDist;
+      racer.jumpHurdlePos = zone.position;
+      racer.jumpLandPos = zone.position + halfDist;
+
+      const span = racer.jumpLandPos - racer.jumpTakeoffPos;
+      if (span > 0 && racer.position > racer.jumpTakeoffPos) {
+        const traveled = Math.min(span, racer.position - racer.jumpTakeoffPos);
+        const progress = traveled / span;
+        racer.jumpTimer = Math.min(
+          HURDLE_JUMP_DURATION * 0.92,
+          progress * HURDLE_JUMP_DURATION
+        );
+      }
+    }
+
+    function finishHurdleJump(racer) {
+      racer.jumping = false;
+      racer.activeHurdleIndex = -1;
+      racer.jumpTimer = HURDLE_JUMP_DURATION;
+    }
+
+    function tryStartPendingHurdleJump(racer) {
+      if (racer.jumping || racer.finished) return;
+      if (!Number.isFinite(racer.pendingHurdleJumpIndex) || racer.pendingHurdleJumpIndex < 0) return;
+      const idx = racer.pendingHurdleJumpIndex;
+      racer.pendingHurdleJumpIndex = -1;
+      beginHurdleJump(racer, idx);
     }
 
     function allHurdlesCleared(racer) {
@@ -1304,8 +1356,6 @@
         id: 'yellow',
         label: 'SUNNY',
         portraitPath: 'portrait-select-sunny.jpg',
-        runSheet: ['sunny-run-sprites.png', 'sunny-run-sprites.jpg', 'sunny-run-sprites-new.jpg'],
-        jumpSheet: ['sunny-jump-sprites.png', 'sunny-jump-sprites.jpg'],
         paths: ['catgirl-yellow-transparent.png', 'catgirl-yellow.jpg']
       },
       {
@@ -1373,6 +1423,17 @@
       jump: SUNNY_JUMP_CYCLE
     };
 
+    const SUNNY_RACE_SHEETS = {
+      run: ['sunny-run-sprites.png', 'sunny-run-sprites.jpg', 'sunny-run-sprites-new.jpg'],
+      jump: ['sunny-jump-sprites.png', 'sunny-jump-sprites.jpg']
+    };
+
+    const RACER_OUTFIT_RECOLOR = {
+      purple: { hueShift: 18, satMult: 1.12, lightMult: 1.06 },
+      yellow: null,
+      orange: { hueShift: 112, satMult: 1.38, lightMult: 1.08 }
+    };
+
     const FRAME_DATA_YELLOW = {
       portrait: [{ sx:249, sy:56, sw:87, sh:130, feet:185 }],
       runStart: [
@@ -1415,10 +1476,14 @@
     };
 
     RACER_CHOICES[0].frames = FRAME_DATA_PURPLE;
+    RACER_CHOICES[0].runFrames = FRAME_DATA_SUNNY_RUN;
+    RACER_CHOICES[0].jumpFrames = FRAME_DATA_SUNNY_JUMP;
     RACER_CHOICES[1].frames = FRAME_DATA_YELLOW;
     RACER_CHOICES[1].runFrames = FRAME_DATA_SUNNY_RUN;
     RACER_CHOICES[1].jumpFrames = FRAME_DATA_SUNNY_JUMP;
     RACER_CHOICES[2].frames = FRAME_DATA_ORANGE;
+    RACER_CHOICES[2].runFrames = FRAME_DATA_SUNNY_RUN;
+    RACER_CHOICES[2].jumpFrames = FRAME_DATA_SUNNY_JUMP;
 
     let selectedRacerId = 'purple';
     const multiplayer = {
@@ -1432,6 +1497,7 @@
     };
     let currentFrameData = FRAME_DATA_PURPLE;
     let racerSpriteCache = {};
+    let sunnyRaceSheetBase = { run: null, jump: null };
     let racerRunSheetCache = {};
     let racerJumpSheetCache = {};
     let racerGifCache = {};
@@ -1457,6 +1523,7 @@
     let trackReady = false;
     let hurdleImage = null;
     let processedHurdle = null;
+    let hurdleSpriteMeta = { ...HURDLE_SPRITE };
     let hurdleReady = false;
     let trackDrawRect = { dx: 0, dy: 0, dw: 800, dh: 400 };
     let globalAnimTime = 0;
@@ -2683,23 +2750,7 @@
           }
         }
         racerSpriteCache[racer.id] = { sheet: img, processed };
-        async function loadExtraSpriteSheet(paths, cache, racerId) {
-          const sheetPaths = Array.isArray(paths) ? paths : [paths];
-          const sheetImg = await loadRacerImage(sheetPaths);
-          if (!sheetImg) return;
-          const usedPng = typeof sheetImg.src === 'string' && /\.png(\?|$)/i.test(sheetImg.src);
-          let processed = sheetImg;
-          if (!usedPng) {
-            try {
-              processed = removeRunSheetBackground(sheetImg);
-            } catch (err) {
-              processed = sheetImg;
-            }
-          }
-          cache[racerId] = { sheet: sheetImg, processed };
-        }
-        if (racer.runSheet) await loadExtraSpriteSheet(racer.runSheet, racerRunSheetCache, racer.id);
-        if (racer.jumpSheet) await loadExtraSpriteSheet(racer.jumpSheet, racerJumpSheetCache, racer.id);
+        await cacheSunnyRaceSheetsForRacer(racer);
         if (racer.runGif) preloadRunGif(racer.id, racer.runGif);
         return true;
       })).then(async (results) => {
@@ -2955,6 +3006,143 @@
       }
     }
 
+
+    function rgbToHsl(r, g, b) {
+      const rf = r / 255;
+      const gf = g / 255;
+      const bf = b / 255;
+      const max = Math.max(rf, gf, bf);
+      const min = Math.min(rf, gf, bf);
+      let h = 0;
+      let s = 0;
+      const l = (max + min) / 2;
+      if (max !== min) {
+        const d = max - min;
+        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+        if (max === rf) h = ((gf - bf) / d + (gf < bf ? 6 : 0)) / 6;
+        else if (max === gf) h = ((bf - rf) / d + 2) / 6;
+        else h = ((rf - gf) / d + 4) / 6;
+      }
+      return { h: h * 360, s, l };
+    }
+
+    function hslToRgb(h, s, l) {
+      h = ((h % 360) + 360) % 360;
+      const c = (1 - Math.abs(2 * l - 1)) * s;
+      const x = c * (1 - Math.abs((h / 60) % 2 - 1));
+      const m = l - c / 2;
+      let rf = 0;
+      let gf = 0;
+      let bf = 0;
+      if (h < 60) { rf = c; gf = x; }
+      else if (h < 120) { rf = x; gf = c; }
+      else if (h < 180) { gf = c; bf = x; }
+      else if (h < 240) { gf = x; bf = c; }
+      else if (h < 300) { rf = x; bf = c; }
+      else { rf = c; bf = x; }
+      return {
+        r: Math.round((rf + m) * 255),
+        g: Math.round((gf + m) * 255),
+        b: Math.round((bf + m) * 255)
+      };
+    }
+
+    function isProtectedOutfitPixel(r, g, b) {
+      if (r > 188 && g > 128 && b > 96 && r >= g - 18 && g >= b - 12) return true;
+      if (r > 232 && g > 232 && b > 232) return true;
+      const max = Math.max(r, g, b);
+      const min = Math.min(r, g, b);
+      if (max - min < 16 && max > 70 && max < 205) return true;
+      return false;
+    }
+
+    function isHairOutfitPixel(r, g, b) {
+      return r > 70 && r < 175 && g > 45 && g < 130 && b > 25 && b < 95 && r > g && g > b;
+    }
+
+    function isEyeOutfitPixel(r, g, b) {
+      return b > 110 && g > 70 && r < 110 && b > r + 25;
+    }
+
+    function isOutfitPixel(r, g, b) {
+      if (isProtectedOutfitPixel(r, g, b)) return false;
+      if (isHairOutfitPixel(r, g, b)) return false;
+      if (isEyeOutfitPixel(r, g, b)) return false;
+      const hsl = rgbToHsl(r, g, b);
+      if (hsl.s < 0.14) return false;
+      if (hsl.h >= 245 && hsl.h <= 335) return true;
+      if (hsl.h >= 210 && hsl.h < 245 && hsl.s >= 0.22 && b > g) return true;
+      return false;
+    }
+
+    function recolorOutfitSheet(source, style) {
+      if (!style || !source) return source;
+      const canvas = document.createElement('canvas');
+      const srcW = source.width || source.naturalWidth;
+      const srcH = source.height || source.naturalHeight;
+      canvas.width = srcW;
+      canvas.height = srcH;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(source, 0, 0);
+      const imageData = ctx.getImageData(0, 0, srcW, srcH);
+      const data = imageData.data;
+      for (let i = 0; i < data.length; i += 4) {
+        if (data[i + 3] === 0) continue;
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+        if (!isOutfitPixel(r, g, b)) continue;
+        const hsl = rgbToHsl(r, g, b);
+        hsl.h += style.hueShift;
+        hsl.s = Math.min(1, Math.max(0.08, hsl.s * style.satMult));
+        hsl.l = Math.min(0.92, Math.max(0.08, hsl.l * style.lightMult));
+        const rgb = hslToRgb(hsl.h, hsl.s, hsl.l);
+        data[i] = rgb.r;
+        data[i + 1] = rgb.g;
+        data[i + 2] = rgb.b;
+      }
+      zeroTransparentRgb(data);
+      ctx.putImageData(imageData, 0, 0);
+      return canvas;
+    }
+
+    async function loadSunnyRaceSheetBase(kind) {
+      if (sunnyRaceSheetBase[kind]) return sunnyRaceSheetBase[kind];
+      const paths = SUNNY_RACE_SHEETS[kind];
+      if (!paths) return null;
+      const sheetImg = await loadRacerImage(paths);
+      if (!sheetImg) return null;
+      const usedPng = typeof sheetImg.src === 'string' && /\.png(\?|$)/i.test(sheetImg.src);
+      let processed = sheetImg;
+      if (!usedPng) {
+        try {
+          processed = removeRunSheetBackground(sheetImg);
+        } catch (err) {
+          processed = sheetImg;
+        }
+      }
+      sunnyRaceSheetBase[kind] = { sheet: sheetImg, processed };
+      return sunnyRaceSheetBase[kind];
+    }
+
+    async function cacheSunnyRaceSheetsForRacer(racer) {
+      if (!racer.runFrames && !racer.jumpFrames) return;
+      const recolor = RACER_OUTFIT_RECOLOR[racer.id] || null;
+      if (racer.runFrames) {
+        const base = await loadSunnyRaceSheetBase('run');
+        if (base) {
+          const processed = recolor ? recolorOutfitSheet(base.processed, recolor) : base.processed;
+          racerRunSheetCache[racer.id] = { sheet: base.sheet, processed };
+        }
+      }
+      if (racer.jumpFrames) {
+        const base = await loadSunnyRaceSheetBase('jump');
+        if (base) {
+          const processed = recolor ? recolorOutfitSheet(base.processed, recolor) : base.processed;
+          racerJumpSheetCache[racer.id] = { sheet: base.sheet, processed };
+        }
+      }
+    }
     function removeRunSheetBackground(img) {
       const canvas = document.createElement('canvas');
       canvas.width = img.width;
@@ -3015,9 +3203,14 @@
       return RACE_LANE_COUNT;
     }
 
-    function isHurdleSkyPixel(r, g, b) {
+    function isHurdleBgPixel(r, g, b) {
       if (b >= 168 && g >= 125 && r <= 145 && b > r + 35 && b > g + 15) return true;
-      return Math.abs(r - 74) + Math.abs(g - 178) + Math.abs(b - 231) < 65;
+      if (Math.abs(r - 74) + Math.abs(g - 178) + Math.abs(b - 231) < 65) return true;
+      const purpleDiff = Math.abs(r - 44) + Math.abs(g - 31) + Math.abs(b - 74);
+      if (purpleDiff < 95) return true;
+      if (r < 95 && g < 75 && b > 45 && b >= r && (r + g + b) < 225) return true;
+      if (r < 130 && g < 110 && b < 150 && (r + g + b) < 210 && (b - r) > 8 && (g - r) < 45) return true;
+      return false;
     }
 
     function removeHurdleBackground(img) {
@@ -3033,29 +3226,33 @@
         const h = canvas.height;
 
         for (let i = 0; i < data.length; i += 4) {
-          if (isHurdleSkyPixel(data[i], data[i + 1], data[i + 2])) {
+          if (isHurdleBgPixel(data[i], data[i + 1], data[i + 2])) {
             data[i + 3] = 0;
           }
         }
 
-        // Remove blue fringe pixels bordering transparency.
-        for (let y = 0; y < h; y++) {
-          for (let x = 0; x < w; x++) {
-            const i = (y * w + x) * 4;
-            if (data[i + 3] === 0) continue;
-            let transparentNeighbors = 0;
-            for (let oy = -1; oy <= 1; oy++) {
-              for (let ox = -1; ox <= 1; ox++) {
-                if (!ox && !oy) continue;
-                const nx = x + ox;
-                const ny = y + oy;
-                if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
-                const ni = (ny * w + nx) * 4;
-                if (data[ni + 3] === 0) transparentNeighbors++;
+        for (let pass = 0; pass < 2; pass++) {
+          for (let y = 0; y < h; y++) {
+            for (let x = 0; x < w; x++) {
+              const i = (y * w + x) * 4;
+              if (data[i + 3] === 0) continue;
+              let transparentNeighbors = 0;
+              for (let oy = -1; oy <= 1; oy++) {
+                for (let ox = -1; ox <= 1; ox++) {
+                  if (!ox && !oy) continue;
+                  const nx = x + ox;
+                  const ny = y + oy;
+                  if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+                  const ni = (ny * w + nx) * 4;
+                  if (data[ni + 3] === 0) transparentNeighbors++;
+                }
               }
-            }
-            if (transparentNeighbors >= 3 && isHurdleSkyPixel(data[i], data[i + 1], data[i + 2])) {
-              data[i + 3] = 0;
+              if (transparentNeighbors > 0 && isHurdleBgPixel(data[i], data[i + 1], data[i + 2])) {
+                data[i] = 0;
+                data[i + 1] = 0;
+                data[i + 2] = 0;
+                data[i + 3] = 0;
+              }
             }
           }
         }
@@ -3065,6 +3262,51 @@
       } catch (err) {
         return img;
       }
+    }
+
+    function measureHurdleSpriteBounds(sheet) {
+      const w = sheet.width;
+      const h = sheet.height;
+      const ctx = sheet.getContext('2d');
+      const imageData = ctx.getImageData(0, 0, w, h);
+      const data = imageData.data;
+      let left = w;
+      let right = 0;
+      let top = h;
+      let bottom = 0;
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          const i = (y * w + x) * 4;
+          if (data[i + 3] === 0) continue;
+          left = Math.min(left, x);
+          right = Math.max(right, x);
+          top = Math.min(top, y);
+          bottom = Math.max(bottom, y);
+        }
+      }
+      if (right < left || bottom < top) return { ...HURDLE_SPRITE };
+      return {
+        sx: left,
+        sy: top,
+        sw: right - left + 1,
+        sh: bottom - top + 1,
+        feetX: Math.floor((left + right) / 2),
+        feetY: bottom + 1
+      };
+    }
+
+    function processHurdleAsset(img) {
+      const isPng = typeof img.src === 'string' && /\.png(\?|$)/i.test(img.src);
+      let sheet = img;
+      if (!isPng) {
+        try {
+          sheet = removeHurdleBackground(img);
+        } catch (err) {
+          sheet = img;
+        }
+      }
+      const meta = measureHurdleSpriteBounds(sheet);
+      return { sheet, meta };
     }
 
     function enableStartButton(loaded) {
@@ -3323,19 +3565,13 @@
           const img = new Image();
           img.onload = () => {
             hurdleImage = img;
-            const isPreCut = path.endsWith('hurdle-sprite.png');
-            const isTransparentAsset = path.endsWith('.png');
-
-            if (isPreCut) {
+            try {
+              const processed = processHurdleAsset(img);
+              processedHurdle = processed.sheet;
+              hurdleSpriteMeta = processed.meta;
+            } catch (err) {
               processedHurdle = img;
-            } else if (isTransparentAsset) {
-              processedHurdle = img;
-            } else {
-              try {
-                processedHurdle = removeHurdleBackground(img);
-              } catch (err) {
-                processedHurdle = img;
-              }
+              hurdleSpriteMeta = { ...HURDLE_SPRITE };
             }
 
             hurdleReady = true;
@@ -3420,7 +3656,7 @@
     function drawProceduralHurdle(ctx, x, groundY, hurdleH) {
       const postW = Math.max(3, Math.floor(hurdleH * 0.12));
       const barH = Math.max(2, Math.floor(hurdleH * 0.1));
-      const span = postW * 2.5;
+      const span = postW * 1.5;
       const topY = groundY - hurdleH;
 
       ctx.fillStyle = '#f2f2f2';
@@ -3450,8 +3686,8 @@
     }
 
     function drawHurdles(ctx, W, spriteH) {
-      const displayH = spriteH;
-      const { sx, sy, sw, sh, feetX, feetY } = HURDLE_SPRITE;
+      const { sx, sy, sw, sh, feetX, feetY } = hurdleSpriteMeta || HURDLE_SPRITE;
+      const displayH = spriteH * HURDLE_HEIGHT_SCALE;
       const footOffsetX = feetX - sx;
       const footOffsetY = feetY - sy;
       const scale = displayH / sh;
@@ -3566,25 +3802,25 @@
     }
 
     function isRacerJumping(racer) {
-      if (racer.finished || allHurdlesCleared(racer)) return false;
-      if (racer.jumping) return true;
-      return !!getActiveHurdleZone(racer);
+      return !racer.finished && !!racer.jumping;
     }
 
     function getJumpProgress(racer) {
-      if (Number.isFinite(racer.jumpTimer)) {
-        return Math.min(1, racer.jumpTimer / HURDLE_JUMP_DURATION);
-      }
-      const zone = getActiveHurdleZone(racer);
-      if (!zone) return 0;
-      return Math.min(1, Math.max(0,
-        (racer.position - zone.jumpStart) / (zone.clearPos - zone.jumpStart)
-      ));
+      if (!racer.jumping) return 0;
+      return Math.min(1, (racer.jumpTimer || 0) / HURDLE_JUMP_DURATION);
     }
 
     function getJumpLift(racer, spriteH) {
       const progress = getJumpProgress(racer);
-      return Math.sin(progress * Math.PI) * spriteH * HURDLE_JUMP_LIFT;
+      let arc;
+      if (progress < 0.32) {
+        arc = Math.sin((progress / 0.32) * Math.PI * 0.5);
+      } else if (progress > 0.68) {
+        arc = Math.sin(((1 - progress) / 0.32) * Math.PI * 0.5);
+      } else {
+        arc = 1;
+      }
+      return arc * spriteH * HURDLE_JUMP_LIFT;
     }
 
     function getJumpFrameIndex(racer, frameData) {
@@ -3592,7 +3828,10 @@
       if (!frames || !frames.length) return 0;
       const progress = getJumpProgress(racer);
       if (frames.length === 1) return 0;
-      return Math.min(frames.length - 1, Math.floor(progress * frames.length));
+      if (progress < 0.18) return 0;
+      if (progress < 0.38) return Math.min(frames.length - 1, 1);
+      if (progress < 0.72) return Math.min(frames.length - 1, Math.max(1, frames.length - 2));
+      return frames.length - 1;
     }
 
     function getRacerAnimation(racer) {
@@ -4343,6 +4582,8 @@
         passingCooldown: 0,
         animOffset: racer.animOffset || 0,
         hurdlesCleared: createHurdlesClearedState(),
+        hurdleJumpTriggered: createHurdleJumpTriggeredState(),
+        pendingHurdleJumpIndex: -1,
         activeHurdleIndex: -1,
         jumping: false,
         jumpTimer: 0,
@@ -4377,17 +4618,26 @@
         }
       }
 
+      if (!racer.hurdleJumpTriggered) {
+        racer.hurdleJumpTriggered = createHurdleJumpTriggeredState();
+      }
+
       const zones = getHurdleZones();
-      let inJumpZone = false;
 
       for (let i = 0; i < zones.length; i++) {
-        if (racer.hurdlesCleared[i]) continue;
         const zone = zones[i];
 
-        if (racer.position >= zone.clearPos) {
+        if (!racer.hurdleJumpTriggered[i] && shouldTriggerHurdleJump(racer, zone)) {
+          racer.hurdleJumpTriggered[i] = true;
+          if (!racer.jumping) {
+            beginHurdleJump(racer, i);
+          } else if (racer.activeHurdleIndex !== i) {
+            racer.pendingHurdleJumpIndex = i;
+          }
+        }
+
+        if (!racer.hurdlesCleared[i] && racer.position >= zone.clearPos) {
           racer.hurdlesCleared[i] = true;
-          racer.jumping = false;
-          racer.activeHurdleIndex = -1;
           racer.hurdleRecoveryTarget = racer.currentSpeed;
           racer.currentSpeed = racer.hurdleRecoveryTarget * HURDLE_SPEED_MULTIPLIER;
           racer.hurdleRecovering = true;
@@ -4398,27 +4648,20 @@
             const secs = racer.hurdleRecoveryDuration.toFixed(1);
             gameState.eventLog.push(`Hurdle ${i + 1} cleared! -50% speed, recovering in ${secs}s`);
           }
-          continue;
-        }
-
-        if (racer.position >= zone.jumpStart && racer.position < zone.clearPos) {
-          if (!racer.jumping) racer.jumpTimer = 0;
-          racer.jumping = true;
-          racer.activeHurdleIndex = i;
-          racer.jumpTimer += dt;
-          inJumpZone = true;
-          break;
         }
       }
 
-      if (!inJumpZone) {
-        racer.jumping = false;
-        racer.activeHurdleIndex = -1;
+      if (racer.jumping) {
+        racer.jumpTimer += dt;
+        if (racer.jumpTimer >= HURDLE_JUMP_DURATION) {
+          finishHurdleJump(racer);
+          tryStartPendingHurdleJump(racer);
+        }
       }
 
-      if (allHurdlesCleared(racer)) {
-        racer.jumping = false;
+      if (allHurdlesCleared(racer) && !racer.jumping) {
         racer.activeHurdleIndex = -1;
+        racer.pendingHurdleJumpIndex = -1;
       }
     }
 
