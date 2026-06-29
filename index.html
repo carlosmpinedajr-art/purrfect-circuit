@@ -1083,8 +1083,8 @@
   <script src="sprites.js"></script>
   <script src="track.js"></script>
   <script src="cpu-stats.js"></script>
-  <script src="/socket.io/socket.io.js"></script>
   <script>
+    const IS_OFFLINE_FILE_MODE = location.protocol === 'file:';
     const STAT_NAMES = ['speed', 'stamina', 'agility', 'focus'];
     const STAT_LABELS = { speed: 'SPEED', stamina: 'STAMINA', agility: 'AGILITY', focus: 'FOCUS' };
     const TRAINING_ANIM = {
@@ -1677,9 +1677,42 @@
     }
 
     function requireOnlineServer() {
+      if (IS_OFFLINE_FILE_MODE) {
+        setJoinError('Multiplayer needs npm start — use SOLO PLAY offline.');
+        return false;
+      }
       if (ensureMultiplayerSocket()) return true;
       setJoinError('Run npm start — online play needs the server.');
       return false;
+    }
+
+    function loadOnlineSocketScript() {
+      if (IS_OFFLINE_FILE_MODE || typeof io !== 'undefined') return Promise.resolve(false);
+      return new Promise((resolve) => {
+        const script = document.createElement('script');
+        script.src = '/socket.io/socket.io.js';
+        script.onload = () => resolve(true);
+        script.onerror = () => resolve(false);
+        document.head.appendChild(script);
+      });
+    }
+
+    function applyOfflineFileModeUI() {
+      if (!IS_OFFLINE_FILE_MODE) return;
+      multiplayer.mode = 'solo';
+      const createBtn = document.getElementById('splash-create-btn');
+      const joinBtn = document.getElementById('splash-join-toggle');
+      const joinPanel = document.getElementById('splash-join-panel');
+      const soloBtn = document.getElementById('splash-solo-btn');
+      const prompt = document.getElementById('splash-prompt');
+      if (createBtn) createBtn.classList.add('hidden');
+      if (joinBtn) joinBtn.classList.add('hidden');
+      if (joinPanel) joinPanel.classList.add('hidden');
+      if (soloBtn) {
+        soloBtn.classList.remove('secondary');
+        soloBtn.textContent = 'START SOLO';
+      }
+      if (prompt) prompt.textContent = 'OFFLINE MODE — DOUBLE-CLICK index.html TO PLAY';
     }
 
     function createMultiplayerRoom() {
@@ -5105,10 +5138,13 @@
       if (gameState.phase === 'splash') playTitleBgm();
     }, { once: true });
 
+    applyOfflineFileModeUI();
     loadTitleArt();
-    ensureMultiplayerSocket();
-    if (loadMultiplayerSession()) {
-      tryReconnectSession();
+    if (!IS_OFFLINE_FILE_MODE) {
+      loadOnlineSocketScript().then(() => {
+        ensureMultiplayerSocket();
+        if (loadMultiplayerSession()) tryReconnectSession();
+      });
     }
 
     Promise.all([loadSprites(), loadTrack(), loadHurdle(), loadTrainingJacksSprite()])
