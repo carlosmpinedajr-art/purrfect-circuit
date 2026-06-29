@@ -1305,6 +1305,7 @@
         label: 'SUNNY',
         portraitPath: 'portrait-select-sunny.jpg',
         runSheet: ['sunny-run-sprites.png', 'sunny-run-sprites.jpg', 'sunny-run-sprites-new.jpg'],
+        jumpSheet: ['sunny-jump-sprites.png', 'sunny-jump-sprites.jpg'],
         paths: ['catgirl-yellow-transparent.png', 'catgirl-yellow.jpg']
       },
       {
@@ -1350,15 +1351,26 @@
     };
 
     const SUNNY_RUN_CYCLE = [
-      { sx: 43,  sy: 163, sw: 198, sh: 268, feet: 430 },
-      { sx: 266, sy: 163, sw: 212, sh: 268, feet: 430 },
-      { sx: 518, sy: 162, sw: 250, sh: 270, feet: 431 },
-      { sx: 768, sy: 163, sw: 192, sh: 268, feet: 430 }
+      { sx: 43,  sy: 163, sw: 190, sh: 269, feet: 431 },
+      { sx: 313, sy: 163, sw: 155, sh: 269, feet: 431 },
+      { sx: 560, sy: 163, sw: 144, sh: 269, feet: 431 },
+      { sx: 789, sy: 163, sw: 160, sh: 269, feet: 431 }
     ];
 
     const FRAME_DATA_SUNNY_RUN = {
       runStart: SUNNY_RUN_CYCLE,
       runFull: SUNNY_RUN_CYCLE
+    };
+
+    const SUNNY_JUMP_CYCLE = [
+      { sx: 43,  sy: 136, sw: 213, sh: 296, feet: 431 },
+      { sx: 256, sy: 136, sw: 231, sh: 296, feet: 431 },
+      { sx: 560, sy: 136, sw: 154, sh: 296, feet: 431 },
+      { sx: 789, sy: 136, sw: 163, sh: 296, feet: 431 }
+    ];
+
+    const FRAME_DATA_SUNNY_JUMP = {
+      jump: SUNNY_JUMP_CYCLE
     };
 
     const FRAME_DATA_YELLOW = {
@@ -1405,6 +1417,7 @@
     RACER_CHOICES[0].frames = FRAME_DATA_PURPLE;
     RACER_CHOICES[1].frames = FRAME_DATA_YELLOW;
     RACER_CHOICES[1].runFrames = FRAME_DATA_SUNNY_RUN;
+    RACER_CHOICES[1].jumpFrames = FRAME_DATA_SUNNY_JUMP;
     RACER_CHOICES[2].frames = FRAME_DATA_ORANGE;
 
     let selectedRacerId = 'purple';
@@ -1420,6 +1433,7 @@
     let currentFrameData = FRAME_DATA_PURPLE;
     let racerSpriteCache = {};
     let racerRunSheetCache = {};
+    let racerJumpSheetCache = {};
     let racerGifCache = {};
     let cpuSpriteCache = {};
     let trainingJacksSheet = null;
@@ -2669,22 +2683,23 @@
           }
         }
         racerSpriteCache[racer.id] = { sheet: img, processed };
-        if (racer.runSheet) {
-          const runPaths = Array.isArray(racer.runSheet) ? racer.runSheet : [racer.runSheet];
-          const runImg = await loadRacerImage(runPaths);
-          if (runImg) {
-            const usedPng = typeof runImg.src === 'string' && /\.png(\?|$)/i.test(runImg.src);
-            let runProcessed = runImg;
-            if (!usedPng) {
-              try {
-                runProcessed = removeRunSheetBackground(runImg);
-              } catch (err) {
-                runProcessed = runImg;
-              }
+        async function loadExtraSpriteSheet(paths, cache, racerId) {
+          const sheetPaths = Array.isArray(paths) ? paths : [paths];
+          const sheetImg = await loadRacerImage(sheetPaths);
+          if (!sheetImg) return;
+          const usedPng = typeof sheetImg.src === 'string' && /\.png(\?|$)/i.test(sheetImg.src);
+          let processed = sheetImg;
+          if (!usedPng) {
+            try {
+              processed = removeRunSheetBackground(sheetImg);
+            } catch (err) {
+              processed = sheetImg;
             }
-            racerRunSheetCache[racer.id] = { sheet: runImg, processed: runProcessed };
           }
+          cache[racerId] = { sheet: sheetImg, processed };
         }
+        if (racer.runSheet) await loadExtraSpriteSheet(racer.runSheet, racerRunSheetCache, racer.id);
+        if (racer.jumpSheet) await loadExtraSpriteSheet(racer.jumpSheet, racerJumpSheetCache, racer.id);
         if (racer.runGif) preloadRunGif(racer.id, racer.runGif);
         return true;
       })).then(async (results) => {
@@ -2976,11 +2991,14 @@
         const choice = RACER_CHOICES.find(r => r.id === (racer.racerId || selectedRacerId)) || RACER_CHOICES[0];
         const cached = racerSpriteCache[choice.id];
         const runCached = racerRunSheetCache[choice.id];
+        const jumpCached = racerJumpSheetCache[choice.id];
         return {
           sheet: cached?.processed || null,
           frameData: choice.frames,
           runSheet: (opts.race && runCached?.processed) ? runCached.processed : null,
           runFrameData: (opts.race && choice.runFrames) ? choice.runFrames : null,
+          jumpSheet: (opts.race && jumpCached?.processed) ? jumpCached.processed : null,
+          jumpFrameData: (opts.race && choice.jumpFrames) ? choice.jumpFrames : null,
           runGif: racerGifCache[choice.id] || null
         };
       }
@@ -3167,6 +3185,12 @@
     }
 
     function drawRacerFrame(ctx, x, groundY, animKey, frameIndex, displayHeight, rotation, bundle) {
+      if (bundle?.jumpSheet && bundle?.jumpFrameData?.[animKey] && animKey === 'jump') {
+        return drawSpriteFrame(
+          ctx, x, groundY, animKey, frameIndex, displayHeight, rotation,
+          bundle.jumpSheet, bundle.jumpFrameData, { tightRunCrop: true }
+        );
+      }
       if (bundle?.runSheet && bundle?.runFrameData?.[animKey] && isRunAnimation(animKey)) {
         return drawSpriteFrame(
           ctx, x, groundY, animKey, frameIndex, displayHeight, rotation,
@@ -3589,10 +3613,13 @@
       if (racer.finished) return 0;
       if (animKey === 'finish') return 0;
       const bundle = getRacerSpriteBundle(racer, opts);
+      if (animKey === 'jump') {
+        const jumpData = (opts.race && bundle.jumpFrameData) ? bundle.jumpFrameData : bundle.frameData;
+        return getJumpFrameIndex(racer, jumpData);
+      }
       const frameData = (opts.race && isRunAnimation(animKey) && bundle.runFrameData)
         ? bundle.runFrameData
         : bundle.frameData;
-      if (animKey === 'jump') return getJumpFrameIndex(racer, bundle.frameData);
       return getAnimFrame(animKey, globalAnimTime, racer.animOffset, speedMod, frameData);
     }
 
@@ -4902,7 +4929,7 @@
 
         let spriteTop = pt.y - spriteH;
         const spriteBundle = getRacerSpriteBundle(racer, raceOpts);
-        if (spriteBundle.sheet || spriteBundle.runSheet || spriteBundle.runGif) {
+        if (spriteBundle.sheet || spriteBundle.runSheet || spriteBundle.jumpSheet || spriteBundle.runGif) {
           const drawn = drawRacerFrame(
             ctx, pt.x, pt.y - jumpLift, animKey, frame, spriteH, pt.tangent, spriteBundle
           );
