@@ -10,6 +10,12 @@ const TRACKS = [
     name: 'Medium Track',
     subtitle: 'MEDIUM TRACK',
     staminaRequirement: 30
+  },
+  {
+    id: 'long',
+    name: 'Long Track',
+    subtitle: 'LONG TRACK',
+    staminaRequirement: 150
   }
 ];
 
