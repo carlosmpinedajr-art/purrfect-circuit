@@ -1,0 +1,12 @@
+    function showLineupScreen() {
+      if (isMultiplayer()) {
+        buildMultiplayerLineup();
+      } else {
+        generateCPUs();
+      }
+      gameState.phase = 'lineup';
+      renderLineupGrid();
+      updateLineupStartButton();
+      playPreRaceBgm();
+      showScreen('lineup-screen');
+    }

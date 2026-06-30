@@ -1,0 +1,35 @@
+    function getCurrentTrack() {
+      const idx = gameState.trackIndex ?? multiplayer.room?.trackIndex ?? 0;
+      return getTrack(idx);
+    }
+
+    function getStaminaRequirement() {
+      return getCurrentTrack().staminaRequirement;
+    }
+
+    function hasMoreTracks() {
+      const idx = gameState.trackIndex ?? multiplayer.room?.trackIndex ?? 0;
+      return idx < getTrackCount() - 1;
+    }
+
+    function syncTrackIndexFromRoom() {
+      if (multiplayer.room?.trackIndex != null) {
+        gameState.trackIndex = multiplayer.room.trackIndex;
+      }
+    }
+
+    function updateTrackUI() {
+      const track = getCurrentTrack();
+      const subtitle = document.getElementById('game-subtitle');
+      if (subtitle) subtitle.textContent = track.subtitle;
+      const staminaGuide = document.getElementById('stamina-guide-line');
+      if (staminaGuide) {
+        staminaGuide.innerHTML = `<strong>STAMINA</strong> \u2014 Need ${track.staminaRequirement}+ at 75% of lap or -80% speed<br>`;
+      }
+    }
+
+    function initGame() {
+      gameState = {
+        phase: 'splash',
+        trackIndex: 0,
+        turn: 1,

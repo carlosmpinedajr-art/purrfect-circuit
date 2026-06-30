@@ -1,0 +1,20 @@
+    function showLineupScreen() {
+      if (isMultiplayer()) {
+        buildMultiplayerLineup();
+      } else {
+        generateCPUs();
+      }
+      gameState.phase = 'lineup';
+      const track = getCurrentTrack();
+      const lineupTitle = document.querySelector('#lineup-screen h2');
+      const lineupSubtitle = document.querySelector('.lineup-subtitle');
+      if (lineupTitle) lineupTitle.textContent = `${track.subtitle} - LINEUP`;
+      if (lineupSubtitle) {
+        lineupSubtitle.textContent =
+          `Meet the field - need ${track.staminaRequirement}+ Stamina at 75% of lap on the ${track.name}.`;
+      }
+      renderLineupGrid();
+      updateLineupStartButton();
+      playPreRaceBgm();
+      showScreen('lineup-screen');
+    }

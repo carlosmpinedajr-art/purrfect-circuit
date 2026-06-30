@@ -1,0 +1,47 @@
+    function enterTrainingScreen() {
+      gameState.phase = 'training';
+      showScreen('training-screen');
+      updateTrackUI();
+      updateTrainingUI();
+      drawPortrait();
+      renderTrainingRivals();
+      updateTrainingWaitStatus();
+      setTrainButtonsEnabled(!getLocalRoomPlayer()?.trainingComplete);
+      playTrainingBgm();
+      stopResultsBgm();
+    }
+
+    function startNextTrainingPhase() {
+      gameState.trackIndex = (gameState.trackIndex || 0) + 1;
+      gameState.turn = 1;
+      gameState.player.raceSkill = null;
+      gameState.bonusOffered = false;
+      gameState.bonusDoneThisTurn = false;
+      enterTrainingScreen();
+    }
+
+    function startTraining() {
+      gameState.phase = 'training';
+      if (isMultiplayer()) {
+        syncTrackIndexFromRoom();
+        syncLocalPlayerFromRoom();
+      } else {
+        gameState.turn = 1;
+        gameState.trackIndex = 0;
+        gameState.player.name = readRacerNameFromInput();
+        gameState.player.stats = getStartingStatsForRacer(selectedRacerId);
+        gameState.player.raceSkill = null;
+        gameState.bonusOffered = false;
+        gameState.bonusDoneThisTurn = false;
+        gameState.player.racerId = selectedRacerId;
+        applySelectedRacer(selectedRacerId);
+      }
+      showScreen('training-screen');
+      updateTrackUI();
+      updateTrainingUI();
+      drawPortrait();
+      renderTrainingRivals();
+      updateTrainingWaitStatus();
+      setTrainButtonsEnabled(!getLocalRoomPlayer()?.trainingComplete);
+      playTrainingBgm();
+    }

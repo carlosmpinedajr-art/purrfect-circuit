@@ -81,6 +81,14 @@
       text-shadow: 2px 2px 0 #8b2252;
       letter-spacing: 2px;
     }
+    header .game-subtitle {
+      font-size: clamp(7px, 1.4vw, 11px);
+      color: #7fd7ff;
+      margin-top: 4px;
+      letter-spacing: 1px;
+      text-shadow: 1px 1px 0 #2d1b4e;
+      opacity: 1;
+    }
     header p {
       font-size: clamp(6px, 1.2vw, 10px);
       margin-top: 6px;
@@ -392,7 +400,7 @@
       padding: 8px;
       cursor: pointer;
       transition: transform 0.1s, border-color 0.1s;
-      width: 88px;
+      width: 112px;
     }
     .racer-option:hover { transform: scale(1.04); }
     .racer-option.selected {
@@ -415,6 +423,20 @@
       font-size: clamp(6px, 1.1vw, 8px);
       color: #ffd700;
     }
+    .racer-option-stats {
+      margin-top: 8px;
+      font-size: clamp(5px, 0.95vw, 7px);
+      line-height: 1.65;
+      text-align: left;
+    }
+    .racer-option-stat {
+      display: flex;
+      justify-content: space-between;
+      gap: 4px;
+      color: #c9a8e8;
+    }
+    .racer-option-stat strong { color: #ffd700; }
+    .racer-option-stat.boost strong { color: #7fd7ff; }
     .btn {
       font-family: 'Press Start 2P', monospace;
       font-size: clamp(10px, 1.8vw, 14px);
@@ -516,7 +538,9 @@
       background: linear-gradient(90deg, #ff6eb4, #ffd700);
       transition: width 0.3s;
     }
-    .stat-value { width: 24px; text-align: right; color: #ffd700; }
+    .stat-value { min-width: 58px; text-align: right; color: #ffd700; font-size: 7px; }
+    .stat-row.capped .stat-value { color: #7fd7ff; }
+    .stat-row.capped .stat-bar-fill { background: linear-gradient(90deg, #5a8fd4, #7fd7ff); }
     .train-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
     .train-btn {
       font-family: 'Press Start 2P', monospace;
@@ -642,6 +666,28 @@
     }
     .skill-btn:hover { background: #3a6a9e; border-color: #ffd700; }
     .skill-btn .skill-name { display: block; color: #ffd700; margin-bottom: 6px; font-size: 9px; }
+    .skill-reveal-card {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 8px;
+      padding: 14px;
+      background: #1a0a2e;
+      border: 3px solid #ffd700;
+      color: #fff;
+      text-align: left;
+      line-height: 1.7;
+      cursor: default;
+    }
+    .skill-reveal-card .skill-name {
+      display: block;
+      color: #ffd700;
+      margin-bottom: 6px;
+      font-size: 9px;
+    }
+    .skill-confirm-btn {
+      margin-top: 4px;
+      width: 100%;
+      text-align: center;
+    }
     .skill-picked {
       font-size: 7px;
       color: #7fd7ff;
@@ -891,12 +937,23 @@
       border-color: #7fd7ff;
     }
     #results-screen .btn-secondary:hover { background: #5a3d9e; }
-    #results-screen .final-stats {
-      font-size: clamp(7px, 1.3vw, 10px);
-      text-align: left;
-      display: inline-block;
-      margin-bottom: 24px;
-      line-height: 2;
+    .results-grid {
+      width: min(920px, 100%);
+      margin-bottom: clamp(18px, 3vh, 28px);
+    }
+    .lineup-card.results-card.place-first {
+      border-color: #ffd700;
+      box-shadow: 0 0 12px rgba(255, 215, 0, 0.35);
+    }
+    .results-place {
+      font-size: clamp(8px, 1.4vw, 11px);
+      color: #ffd700;
+      line-height: 1.4;
+    }
+    .results-time {
+      font-size: clamp(6px, 1vw, 7px);
+      color: #7fd7ff;
+      line-height: 1.5;
     }
     .win { color: #ffd700; }
     .lose { color: #ff6eb4; }
@@ -913,6 +970,7 @@
         </div>
       </div>
       <h1>PURRFECT CIRCUIT</h1>
+      <p class="game-subtitle hidden" id="game-subtitle">MILE TRACK</p>
     </header>
 
     <div id="screen">
@@ -975,7 +1033,7 @@
           </div>
         </div>
         <div class="training-right">
-          <p style="font-size:8px;color:#ffd700;margin-bottom:12px;">CHOOSE A STAT TO TRAIN (+1)</p>
+          <p style="font-size:8px;color:#ffd700;margin-bottom:12px;">CHOOSE A STAT TO TRAIN (+5)</p>
           <div class="train-buttons" id="train-buttons"></div>
           <div class="training-options">
             <label class="training-anim-toggle" for="training-anim-toggle">
@@ -986,10 +1044,12 @@
           <div class="info-panel">
             <h3>STAT GUIDE</h3>
             <strong>SPEED</strong> — Top speed on the track<br>
-            <strong>STAMINA</strong> — Need 15+ at 75% of lap or -25% speed<br>
+            <span id="stamina-guide-line"><strong>STAMINA</strong> — Need 15+ at 75% of lap or -80% speed<br></span>
             <strong>AGILITY</strong> — Passing runners &amp; hurdle speed recovery<br>
             <strong>FOCUS</strong> — Steady pacing; less random speed wobble<br><br>
-            <strong>TURN 6</strong> — Learn one race skill
+            <strong>STAT CAP</strong> — Each stat maxes at 150<br><br>
+            <strong>SKILLS</strong> — Learn multiple skills during training; carry over to the next track<br>
+            <strong>RANDOM EVENTS</strong> — 80% chance each turn for bonus training (+2)
           </div>
           <div class="skill-picked hidden" id="skill-picked"></div>
           <p class="training-wait-status hidden" id="training-wait-status">Waiting for other racers to finish training...</p>
@@ -1037,10 +1097,9 @@
 
       <!-- Results -->
       <div id="results-screen" class="hidden">
-        <canvas id="results-canvas" width="120" height="120" style="margin:0 auto 20px;display:block;"></canvas>
         <h2 id="result-title">RESULTS</h2>
         <div class="result-text" id="result-text"></div>
-        <div class="final-stats" id="final-stats"></div>
+        <div class="lineup-grid results-grid" id="results-grid"></div>
         <div class="results-buttons">
           <button class="btn btn-secondary" id="replay-btn">REPLAY RACE</button>
           <button class="btn" id="restart-btn">PLAY AGAIN</button>
@@ -1052,8 +1111,8 @@
   <!-- Skill Modal -->
   <div id="skill-modal" class="hidden">
     <div class="modal-content">
-      <h3>RACE SKILL — TURN 6</h3>
-      <p class="skill-prompt">Choose one special ability for race day. You can only pick one!</p>
+      <h3>RACE SKILL UNLOCKED!</h3>
+      <p class="skill-prompt" id="skill-reveal-text">You learned a new ability during training.</p>
       <div class="skill-options" id="skill-options"></div>
     </div>
   </div>
@@ -1083,6 +1142,9 @@
   <script src="sprites.js"></script>
   <script src="track.js"></script>
   <script src="cpu-stats.js"></script>
+  <script src="racer-stats.js"></script>
+  <script src="tracks.js"></script>
+  <script src="race-skills.js"></script>
   <script>
     const IS_OFFLINE_FILE_MODE = location.protocol === 'file:';
     const STAT_NAMES = ['speed', 'stamina', 'agility', 'focus'];
@@ -1164,26 +1226,7 @@
     const TRAINING_MODAL_MS = 2600;
     const TRAINING_ANIM_KEY = 'purrfectCircuitTrainingAnim';
     const MAX_TURNS = 10;
-    const BONUS_TURNS = [3, 6, 9];
     const SKILL_TURN = 6;
-
-    const RACE_SKILLS = [
-      {
-        id: 'secondWind',
-        name: 'Second Wind',
-        description: 'At 50% lap: +10 Stamina'
-      },
-      {
-        id: 'midraceSurge',
-        name: 'Midrace Surge',
-        description: 'At 50% lap: +20 Speed'
-      },
-      {
-        id: 'finalKick',
-        name: 'Final Kick',
-        description: 'At 75% lap: +30 Speed'
-      }
-    ];
 
     const BONUS_SCENARIOS = [
       'A stray sunbeam hits the track just as you arrive for practice. Your coach left a note on your locker: "Today is your day, Nya-Runner." You stretch once and feel every muscle wake up ready to run.',
@@ -1199,11 +1242,11 @@
     ];
     const DEFAULT_RACER_NAME = 'Nya-Runner';
     const MAX_RACER_NAME_LEN = 12;
-    const STAMINA_REQUIREMENT = 15;
     const LAP_LENGTH = 1000;
     const TOTAL_LAPS = 1;
     const RACE_LENGTH = LAP_LENGTH * TOTAL_LAPS;
     const STAMINA_CHECK_POINT = 0.75;
+    const STAMINA_PENALTY_SPEED_MULT = 0.2;
     const RACE_SPEED_TO_MPH = 0.32;
     const PACE_VARIANCE_MAX = 0.10;
     const PACE_VARIANCE_MIN = 0.04;
@@ -1215,6 +1258,7 @@
     const HURDLE_JUMP_LEAD = 24;
     const HURDLE_CLEAR_TRAIL = 8;
     const HURDLE_JUMP_DURATION = 0.5;
+    const POST_JUMP_SETTLE_DURATION = 0.22;
     const HURDLE_JUMP_MIN_HALF = 18;
     const HURDLE_JUMP_LIFT = 0.5;
     const HURDLE_WIDTH_SCALE = 1;
@@ -1288,6 +1332,7 @@
       racer.jumping = false;
       racer.activeHurdleIndex = -1;
       racer.jumpTimer = HURDLE_JUMP_DURATION;
+      racer.postJumpSettle = POST_JUMP_SETTLE_DURATION;
     }
 
     function tryStartPendingHurdleJump(racer) {
@@ -1428,6 +1473,41 @@
       jump: ['sunny-jump-sprites.png', 'sunny-jump-sprites.jpg']
     };
 
+
+    const CPU_RACE_SHEETS = {
+      run: ['cpu-run-sprites.png', 'cpu-run-sprites-new.jpg'],
+      jump: ['cpu-jump-sprites.png', 'cpu-jump-sprites-new.jpg']
+    };
+
+    const CELEBRATION_SHEETS = ['celebration-sprites.png', 'celebration-sprites-new.jpg'];
+
+    const CELEBRATION_CYCLE = [
+      { sx: 45,  sy: 140, sw: 208, sh: 297, feet: 437 },
+      { sx: 293, sy: 140, sw: 202, sh: 275, feet: 415 },
+      { sx: 520, sy: 140, sw: 248, sh: 297, feet: 437 },
+      { sx: 768, sy: 140, sw: 207, sh: 297, feet: 437 }
+    ];
+
+    const FRAME_DATA_CELEBRATION = {
+      finish: CELEBRATION_CYCLE
+    };
+
+    const FRAME_DATA_CPU_RUN = {
+      runStart: SUNNY_RUN_CYCLE,
+      runFull: SUNNY_RUN_CYCLE
+    };
+
+    const FRAME_DATA_CPU_JUMP = {
+      jump: SUNNY_JUMP_CYCLE
+    };
+
+    const CPU_OUTFIT_RECOLOR = {
+      'cpu-mint': { hueShift: 125, satMult: 1.30, lightMult: 0.98 },
+      'cpu-rose': { hueShift: -78, satMult: 1.45, lightMult: 1.04 },
+      'cpu-sky': { hueShift: 162, satMult: 1.35, lightMult: 1.05 },
+      'cpu-lime': { hueShift: 44, satMult: 1.50, lightMult: 1.02 },
+      'cpu-violet': { hueShift: -132, satMult: 1.25, lightMult: 0.94 }
+    };
     const RACER_OUTFIT_RECOLOR = {
       purple: { hueShift: 18, satMult: 1.12, lightMult: 1.06 },
       yellow: null,
@@ -1501,6 +1581,12 @@
     let racerRunSheetCache = {};
     let racerJumpSheetCache = {};
     let racerGifCache = {};
+    let cpuRaceSheetBase = { run: null, jump: null };
+    let cpuRunSheetCache = {};
+    let cpuJumpSheetCache = {};
+    let celebrationSheetBase = null;
+    let racerCelebrationSheetCache = {};
+    let cpuCelebrationSheetCache = {};
     let cpuSpriteCache = {};
     let trainingJacksSheet = null;
     let trainingJacksReady = false;
@@ -1511,7 +1597,7 @@
       runStart:     { fps: 9 },
       runFull:      { fps: 12 },
       jump:         { fps: 5 },
-      finish:       { fps: 6 },
+      finish:       { fps: 8 },
       jumpingJacks: { fps: 5 }
     };
 
@@ -1578,15 +1664,47 @@
       'Recording (6).m4a'
     ];
 
+    function getCurrentTrack() {
+      const idx = gameState.trackIndex ?? multiplayer.room?.trackIndex ?? 0;
+      return getTrack(idx);
+    }
+
+    function getStaminaRequirement() {
+      return getCurrentTrack().staminaRequirement;
+    }
+
+    function hasMoreTracks() {
+      const idx = gameState.trackIndex ?? multiplayer.room?.trackIndex ?? 0;
+      return idx < getTrackCount() - 1;
+    }
+
+    function syncTrackIndexFromRoom() {
+      if (multiplayer.room?.trackIndex != null) {
+        gameState.trackIndex = multiplayer.room.trackIndex;
+      }
+    }
+
+    function updateTrackUI() {
+      const track = getCurrentTrack();
+      const subtitle = document.getElementById('game-subtitle');
+      if (subtitle) subtitle.textContent = track.subtitle;
+      const staminaGuide = document.getElementById('stamina-guide-line');
+      if (staminaGuide) {
+        staminaGuide.innerHTML = `<strong>STAMINA</strong> — Need ${track.staminaRequirement}+ at 75% of lap or -80% speed<br>`;
+      }
+    }
+
     function initGame() {
       gameState = {
         phase: 'splash',
+        trackIndex: 0,
         turn: 1,
         player: {
           name: DEFAULT_RACER_NAME,
           racerId: selectedRacerId,
-          stats: { speed: 5, stamina: 5, agility: 5, focus: 5 },
+          stats: getStartingStatsForRacer(selectedRacerId),
           raceSkill: null,
+          learnedSkills: [],
           isPlayer: true
         },
         cpus: [],
@@ -1604,6 +1722,8 @@
       });
       document.getElementById(id).classList.remove('hidden');
       document.getElementById('game-container').classList.toggle('splash-active', id === 'splash-screen');
+      const subtitle = document.getElementById('game-subtitle');
+      if (subtitle) subtitle.classList.toggle('hidden', id !== 'training-screen');
       requestAnimationFrame(resizeLayout);
     }
 
@@ -1652,6 +1772,7 @@
       multiplayer.mode = res.hostId === res.playerId ? 'host' : 'join';
       multiplayer.playerId = res.playerId;
       multiplayer.room = res;
+      if (res.trackIndex != null) gameState.trackIndex = res.trackIndex;
       multiplayer.localReady = !!getLocalRoomPlayer()?.ready;
       saveMultiplayerSession(res.code, res.playerId);
 
@@ -1663,7 +1784,12 @@
         return;
       }
       if (phase === 'training') {
-        startTraining();
+        syncTrackIndexFromRoom();
+        if ((gameState.trackIndex || 0) > 0) {
+          enterTrainingScreen();
+        } else {
+          startTraining();
+        }
         return;
       }
       if (phase === 'lineup') {
@@ -1718,9 +1844,11 @@
       socket.on('disconnect', () => { multiplayer.connected = false; });
       socket.on('room:updated', (room) => {
         multiplayer.room = { ...multiplayer.room, ...room };
+        if (room.trackIndex != null) gameState.trackIndex = room.trackIndex;
         const me = room.players?.find((p) => p.id === multiplayer.playerId);
         if (me) multiplayer.localReady = !!me.ready;
         if (gameState.phase === 'lobby') renderLobby();
+        if (gameState.phase === 'results') updateResultsContinueButton();
         if (gameState.phase === 'training') {
           syncLocalPlayerFromRoom();
           renderTrainingRivals();
@@ -1732,8 +1860,15 @@
           updateLineupStartButton();
         }
       });
-      socket.on('room:phase', ({ phase }) => {
+      socket.on('room:phase', ({ phase, trackIndex }) => {
+        if (trackIndex != null) gameState.trackIndex = trackIndex;
+        if (phase === 'training' && gameState.phase === 'results') {
+          syncLocalPlayerFromRoom();
+          enterTrainingScreen();
+          return;
+        }
         if (phase === 'training' && (gameState.phase === 'lobby' || gameState.phase === 'setup')) {
+          gameState.trackIndex = 0;
           startTraining();
           return;
         }
@@ -1948,7 +2083,8 @@
       gameState.player.name = me.name || gameState.player.name;
       gameState.player.racerId = me.racerId || gameState.player.racerId;
       gameState.player.stats = { ...me.stats };
-      gameState.player.raceSkill = me.raceSkill || null;
+      gameState.player.learnedSkills = [...(me.learnedSkills || [])];
+      gameState.player.raceSkill = syncPrimaryRaceSkill(gameState.player.learnedSkills) || me.raceSkill || null;
       gameState.turn = me.turn || gameState.turn;
       if (me.racerId) applySelectedRacer(me.racerId);
     }
@@ -2010,7 +2146,8 @@
       if (localEntry) {
         gameState.player.name = localEntry.name;
         gameState.player.stats = { ...localEntry.stats };
-        gameState.player.raceSkill = localEntry.raceSkill;
+        gameState.player.learnedSkills = [...(localEntry.learnedSkills || [])];
+        gameState.player.raceSkill = syncPrimaryRaceSkill(gameState.player.learnedSkills) || localEntry.raceSkill || null;
         gameState.player.racerId = localEntry.racerId;
         applySelectedRacer(localEntry.racerId);
       }
@@ -2021,7 +2158,8 @@
           id: e.id,
           name: e.name,
           stats: { ...e.stats },
-          raceSkill: e.raceSkill,
+          learnedSkills: [...(e.learnedSkills || [])],
+          raceSkill: e.raceSkill || syncPrimaryRaceSkill(e.learnedSkills || []),
           racerId: e.racerId,
           cpuStyleId: e.cpuStyleId,
           isPlayer: false,
@@ -2038,8 +2176,9 @@
           id: sr.id,
           playerId: sr.playerId,
           name: meta.name || 'Racer',
-          stats: meta.stats || { speed: 5, stamina: 5, agility: 5, focus: 5 },
-          raceSkill: meta.raceSkill || null,
+          stats: meta.stats || getStartingStatsForRacer(meta.racerId),
+          learnedSkills: [...(meta.learnedSkills || getRacerLearnedSkills(meta))],
+          raceSkill: meta.raceSkill || syncPrimaryRaceSkill(meta.learnedSkills) || null,
           racerId: meta.racerId || null,
           cpuStyleId: meta.cpuStyleId || null,
           isPlayer: sr.playerId === multiplayer.playerId,
@@ -2062,7 +2201,10 @@
           skillTriggers: prev?.skillTriggers || {},
           staminaDrain: prev?.staminaDrain || 0,
           staminaChecked: prev?.staminaChecked || false,
-          passingCooldown: prev?.passingCooldown || 0
+          passingCooldown: prev?.passingCooldown || 0,
+          postJumpSettle: (prev?.jumping && !sr.jumping)
+            ? POST_JUMP_SETTLE_DURATION
+            : Math.max(0, prev?.postJumpSettle || 0)
         };
       });
     }
@@ -2086,6 +2228,7 @@
     }
 
     function resumeMultiplayerRace(raceSync, toResults) {
+      if (raceSync.trackIndex != null) gameState.trackIndex = raceSync.trackIndex;
       cacheRacerMeta(raceSync.field);
       gameState.serverRace = true;
       mergeServerRacers(raceSync.racers);
@@ -2122,6 +2265,7 @@
     }
 
     function beginMultiplayerRace(data) {
+      if (data.trackIndex != null) gameState.trackIndex = data.trackIndex;
       cacheRacerMeta(data.field);
       setReplaySkipVisible(false);
       const isHost = multiplayer.room?.hostId === multiplayer.playerId;
@@ -2138,9 +2282,11 @@
       gameState.raceFinished = false;
       gameState.resultsDelay = 0;
       gameState.raceTime = data.time || 0;
-      const skill = getRaceSkill(gameState.player.raceSkill);
-      gameState.eventLog = skill
-        ? ['The race has begun! Hurdles at 15% & 60% — Agility recovers speed!', `Skill ready: ${skill.name}`]
+      const readySkills = (gameState.player.learnedSkills || [])
+        .map((id) => getRaceSkill(id)?.name)
+        .filter(Boolean);
+      gameState.eventLog = readySkills.length
+        ? ['The race has begun! Hurdles at 15% & 60% — Agility recovers speed!', `Skills ready: ${readySkills.join(', ')}`]
         : [`The race has begun! Go ${gameState.player.name}!`, 'Hurdles at 15% & 60% — Agility recovers speed!'];
       lastTime = 0;
       showScreen('race-screen');
@@ -2763,13 +2909,58 @@
       });
     }
 
+
+    async function loadCpuRaceSheetBase(kind) {
+      if (cpuRaceSheetBase[kind]) return cpuRaceSheetBase[kind];
+      const cpuPaths = CPU_RACE_SHEETS[kind];
+      const sunnyPaths = SUNNY_RACE_SHEETS[kind];
+      let sheetImg = cpuPaths ? await loadRacerImage(cpuPaths) : null;
+      if (!sheetImg && sunnyPaths) sheetImg = await loadRacerImage(sunnyPaths);
+      if (!sheetImg) return null;
+      const usedPng = typeof sheetImg.src === 'string' && /\.png(\?|$)/i.test(sheetImg.src);
+      let processed = sheetImg;
+      if (usedPng) {
+        processed = cloneRaceSheet(sheetImg) || sheetImg;
+      } else {
+        try {
+          processed = removeRunSheetBackground(sheetImg);
+        } catch (err) {
+          processed = cloneRaceSheet(sheetImg) || sheetImg;
+        }
+      }
+      cpuRaceSheetBase[kind] = { sheet: sheetImg, processed };
+      return cpuRaceSheetBase[kind];
+    }
+
+    async function cacheCpuRaceSheetsForStyle(style) {
+      const recolor = CPU_OUTFIT_RECOLOR[style.id] || null;
+      const runBase = await loadCpuRaceSheetBase('run');
+      if (runBase?.processed) {
+        const processed = safeRecolorOutfitSheet(runBase.processed, recolor);
+        cpuRunSheetCache[style.id] = { sheet: runBase.sheet, processed };
+      }
+      const jumpBase = await loadCpuRaceSheetBase('jump');
+      if (jumpBase?.processed) {
+        const processed = safeRecolorOutfitSheet(jumpBase.processed, recolor);
+        cpuJumpSheetCache[style.id] = { sheet: jumpBase.sheet, processed };
+      }
+      await cacheCelebrationForCpuStyle(style);
+    }
+
+    async function ensureCpuRaceSheetsLoaded() {
+      await Promise.all(CPU_RACER_STYLES.map((style) => cacheCpuRaceSheetsForStyle(style)));
+      return CPU_RACER_STYLES.some((style) => cpuRunSheetCache[style.id] || cpuJumpSheetCache[style.id]);
+    }
+
     function loadCpuSprites() {
-      return Promise.all(CPU_RACER_STYLES.map(async (style) => {
-        const img = await loadRacerImage([style.path]);
-        if (!img) return false;
-        cpuSpriteCache[style.id] = { sheet: img, processed: img };
-        return true;
-      }));
+      return ensureCpuRaceSheetsLoaded().then(() =>
+        Promise.all(CPU_RACER_STYLES.map(async (style) => {
+          const img = await loadRacerImage([style.path]);
+          if (!img) return false;
+          cpuSpriteCache[style.id] = { sheet: img, processed: img };
+          return true;
+        }))
+      );
     }
 
     function loadTrainingJacksSprite() {
@@ -2841,6 +3032,14 @@
       );
     }
 
+    function formatRacerOptionStatsHtml(stats) {
+      return STAT_NAMES.map((stat) => {
+        const val = stats[stat];
+        const boost = val > 5 ? ' boost' : '';
+        return `<div class="racer-option-stat${boost}"><span>${STAT_LABELS[stat]}</span><strong>${val}</strong></div>`;
+      }).join('');
+    }
+
     function renderRacerOptions() {
       const container = document.getElementById('racer-options');
       if (!container) return;
@@ -2862,8 +3061,13 @@
         const label = document.createElement('span');
         label.textContent = racer.label;
 
+        const stats = document.createElement('div');
+        stats.className = 'racer-option-stats';
+        stats.innerHTML = formatRacerOptionStatsHtml(getStartingStatsForRacer(racer.id));
+
         btn.appendChild(portrait);
         btn.appendChild(label);
+        btn.appendChild(stats);
         btn.onclick = () => selectRacer(racer.id);
         container.appendChild(btn);
       });
@@ -3075,6 +3279,30 @@
       return false;
     }
 
+
+    function cloneRaceSheet(source) {
+      if (!source) return null;
+      const canvas = document.createElement('canvas');
+      const srcW = source.width || source.naturalWidth || 0;
+      const srcH = source.height || source.naturalHeight || 0;
+      if (!srcW || !srcH) return source;
+      canvas.width = srcW;
+      canvas.height = srcH;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(source, 0, 0);
+      return canvas;
+    }
+
+    function safeRecolorOutfitSheet(source, style) {
+      if (!source) return null;
+      if (!style) return cloneRaceSheet(source) || source;
+      try {
+        return recolorOutfitSheet(source, style) || cloneRaceSheet(source) || source;
+      } catch (err) {
+        console.warn('Outfit recolor failed; using base sheet', err);
+        return cloneRaceSheet(source) || source;
+      }
+    }
     function recolorOutfitSheet(source, style) {
       if (!style || !source) return source;
       const canvas = document.createElement('canvas');
@@ -3125,23 +3353,80 @@
       return sunnyRaceSheetBase[kind];
     }
 
+    function processCelebrationSheet(img) {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+      try {
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+        for (let i = 0; i < data.length; i += 4) {
+          if (data[i + 3] > 0 && data[i + 3] < 255) data[i + 3] = 255;
+        }
+        removeDarkFringe(data, canvas.width, canvas.height, 3);
+        zeroTransparentRgb(data);
+        ctx.putImageData(imageData, 0, 0);
+        return canvas;
+      } catch (err) {
+        return cloneRaceSheet(img) || img;
+      }
+    }
+
+    async function loadCelebrationSheetBase() {
+      if (celebrationSheetBase) return celebrationSheetBase;
+      const sheetImg = await loadRacerImage(CELEBRATION_SHEETS);
+      if (!sheetImg) return null;
+      const usedPng = typeof sheetImg.src === 'string' && /\.png(\?|$)/i.test(sheetImg.src);
+      let processed = sheetImg;
+      if (usedPng) {
+        processed = processCelebrationSheet(sheetImg);
+      } else {
+        try {
+          processed = removeRunSheetBackground(sheetImg);
+        } catch (err) {
+          processed = processCelebrationSheet(sheetImg);
+        }
+      }
+      celebrationSheetBase = { sheet: sheetImg, processed };
+      return celebrationSheetBase;
+    }
+
+    async function cacheCelebrationForRacer(racer) {
+      const base = await loadCelebrationSheetBase();
+      if (!base?.processed) return;
+      const recolor = RACER_OUTFIT_RECOLOR[racer.id] || null;
+      const processed = safeRecolorOutfitSheet(base.processed, recolor);
+      racerCelebrationSheetCache[racer.id] = { sheet: base.sheet, processed };
+    }
+
+    async function cacheCelebrationForCpuStyle(style) {
+      const base = await loadCelebrationSheetBase();
+      if (!base?.processed) return;
+      const recolor = CPU_OUTFIT_RECOLOR[style.id] || null;
+      const processed = safeRecolorOutfitSheet(base.processed, recolor);
+      cpuCelebrationSheetCache[style.id] = { sheet: base.sheet, processed };
+    }
+
     async function cacheSunnyRaceSheetsForRacer(racer) {
       if (!racer.runFrames && !racer.jumpFrames) return;
       const recolor = RACER_OUTFIT_RECOLOR[racer.id] || null;
       if (racer.runFrames) {
         const base = await loadSunnyRaceSheetBase('run');
         if (base) {
-          const processed = recolor ? recolorOutfitSheet(base.processed, recolor) : base.processed;
+          const processed = safeRecolorOutfitSheet(base.processed, recolor);
           racerRunSheetCache[racer.id] = { sheet: base.sheet, processed };
         }
       }
       if (racer.jumpFrames) {
         const base = await loadSunnyRaceSheetBase('jump');
         if (base) {
-          const processed = recolor ? recolorOutfitSheet(base.processed, recolor) : base.processed;
+          const processed = safeRecolorOutfitSheet(base.processed, recolor);
           racerJumpSheetCache[racer.id] = { sheet: base.sheet, processed };
         }
       }
+      await cacheCelebrationForRacer(racer);
     }
     function removeRunSheetBackground(img) {
       const canvas = document.createElement('canvas');
@@ -3174,26 +3459,57 @@
       }
     }
 
+    function isCpuRacer(racer) {
+      return !!racer && !racer.isPlayer && !!racer.cpuStyleId;
+    }
     function getRacerSpriteBundle(racer, opts = {}) {
+      const inRace = !!opts.race;
+      if (isCpuRacer(racer)) {
+        const style = CPU_RACER_STYLES.find(s => s.id === racer.cpuStyleId) || CPU_RACER_STYLES[0];
+        const cached = cpuSpriteCache[style.id];
+        const runCached = cpuRunSheetCache[style.id];
+        const jumpCached = cpuJumpSheetCache[style.id];
+        const runSheet = inRace
+          ? (runCached?.processed || cpuRaceSheetBase.run?.processed || null)
+          : null;
+        const jumpSheet = inRace
+          ? (jumpCached?.processed || cpuRaceSheetBase.jump?.processed || null)
+          : null;
+        const finishCached = cpuCelebrationSheetCache[style.id];
+        const finishSheet = inRace
+          ? (finishCached?.processed || celebrationSheetBase?.processed || null)
+          : null;
+        return {
+          sheet: cached?.processed || null,
+          frameData: FRAME_DATA_YELLOW,
+          runSheet,
+          runFrameData: inRace ? FRAME_DATA_CPU_RUN : null,
+          jumpSheet,
+          jumpFrameData: inRace ? FRAME_DATA_CPU_JUMP : null,
+          finishSheet,
+          finishFrameData: inRace ? FRAME_DATA_CELEBRATION : null
+        };
+      }
       if (racer.isPlayer || racer.racerId) {
         const choice = RACER_CHOICES.find(r => r.id === (racer.racerId || selectedRacerId)) || RACER_CHOICES[0];
         const cached = racerSpriteCache[choice.id];
         const runCached = racerRunSheetCache[choice.id];
         const jumpCached = racerJumpSheetCache[choice.id];
+        const finishCached = racerCelebrationSheetCache[choice.id];
+        const finishSheet = inRace
+          ? (finishCached?.processed || celebrationSheetBase?.processed || null)
+          : null;
         return {
           sheet: cached?.processed || null,
           frameData: choice.frames,
-          runSheet: (opts.race && runCached?.processed) ? runCached.processed : null,
-          runFrameData: (opts.race && choice.runFrames) ? choice.runFrames : null,
-          jumpSheet: (opts.race && jumpCached?.processed) ? jumpCached.processed : null,
-          jumpFrameData: (opts.race && choice.jumpFrames) ? choice.jumpFrames : null,
+          runSheet: (inRace && runCached?.processed) ? runCached.processed : null,
+          runFrameData: (inRace && choice.runFrames) ? choice.runFrames : null,
+          jumpSheet: (inRace && jumpCached?.processed) ? jumpCached.processed : null,
+          jumpFrameData: (inRace && choice.jumpFrames) ? choice.jumpFrames : null,
+          finishSheet,
+          finishFrameData: inRace ? FRAME_DATA_CELEBRATION : null,
           runGif: racerGifCache[choice.id] || null
         };
-      }
-      const style = CPU_RACER_STYLES.find(s => s.id === racer.cpuStyleId) || CPU_RACER_STYLES[0];
-      const cached = cpuSpriteCache[style.id];
-      if (cached?.processed) {
-        return { sheet: cached.processed, frameData: FRAME_DATA_YELLOW };
       }
       const fallback = racerSpriteCache.yellow;
       return { sheet: fallback?.processed || null, frameData: FRAME_DATA_YELLOW };
@@ -3427,6 +3743,12 @@
     }
 
     function drawRacerFrame(ctx, x, groundY, animKey, frameIndex, displayHeight, rotation, bundle) {
+      if (animKey === 'finish' && bundle?.finishSheet && bundle?.finishFrameData?.finish) {
+        return drawSpriteFrame(
+          ctx, x, groundY, animKey, frameIndex, displayHeight, rotation,
+          bundle.finishSheet, bundle.finishFrameData, { tightRunCrop: true }
+        );
+      }
       if (bundle?.jumpSheet && bundle?.jumpFrameData?.[animKey] && animKey === 'jump') {
         return drawSpriteFrame(
           ctx, x, groundY, animKey, frameIndex, displayHeight, rotation,
@@ -3441,6 +3763,18 @@
       }
       if (bundle?.runGif && isRunAnimation(animKey)) {
         return drawRunGifFrame(ctx, x, groundY, displayHeight, rotation, bundle.runGif);
+      }
+      if (isRunAnimation(animKey) && bundle?.runSheet && bundle?.runFrameData?.runFull) {
+        return drawSpriteFrame(
+          ctx, x, groundY, 'runFull', frameIndex, displayHeight, rotation,
+          bundle.runSheet, bundle.runFrameData, { tightRunCrop: true }
+        );
+      }
+      if (animKey === 'jump' && bundle?.jumpSheet && bundle?.jumpFrameData?.jump) {
+        return drawSpriteFrame(
+          ctx, x, groundY, 'jump', frameIndex, displayHeight, rotation,
+          bundle.jumpSheet, bundle.jumpFrameData, { tightRunCrop: true }
+        );
       }
       if (bundle?.sheet && bundle?.frameData?.[animKey]) {
         return drawSpriteFrame(
@@ -3479,7 +3813,7 @@
       ctx.rotate(rotation + lean);
       ctx.scale(scaleX, scaleY);
       ctx.imageSmoothingEnabled = false;
-      const centerAnchor = isRunning || animKey === 'portrait' || animKey === 'idle';
+      const centerAnchor = isRunning || animKey === 'portrait' || animKey === 'idle' || animKey === 'finish';
       const anchorX = centerAnchor ? -dw / 2 : 0;
       ctx.drawImage(
         sheet,
@@ -3823,6 +4157,28 @@
       return arc * spriteH * HURDLE_JUMP_LIFT;
     }
 
+    function getPostJumpLift(racer, spriteH) {
+      if (!racer.postJumpSettle || racer.postJumpSettle <= 0) return 0;
+      const t = 1 - (racer.postJumpSettle / POST_JUMP_SETTLE_DURATION);
+      const ease = t * t * (3 - 2 * t);
+      return (1 - ease) * spriteH * 0.1;
+    }
+
+    function getStableRunAnimSpeed(racer) {
+      const base = racer.hurdleRecoveryTarget || racer.currentSpeed;
+      if (!Number.isFinite(base)) return 1.1;
+      return Math.min(1.6, Math.max(0.9, base / 14));
+    }
+
+    function updateRacerVisualState(dt) {
+      if (!gameState.racers?.length) return;
+      gameState.racers.forEach((racer) => {
+        if (racer.postJumpSettle > 0) {
+          racer.postJumpSettle = Math.max(0, racer.postJumpSettle - dt);
+        }
+      });
+    }
+
     function getJumpFrameIndex(racer, frameData) {
       const frames = frameData?.jump;
       if (!frames || !frames.length) return 0;
@@ -3842,23 +4198,37 @@
     }
 
     function getRacerAnimSpeed(racer) {
-      if (racer.finished) return 0;
+      if (racer.finished) return 1;
+      if (racer.jumping) return 1;
+      if (racer.postJumpSettle > 0 || racer.hurdleRecovering) {
+        return getStableRunAnimSpeed(racer);
+      }
       const speed = racer.currentSpeed;
       if (!Number.isFinite(speed)) return 1.1;
       return Math.min(1.6, Math.max(0.9, speed / 14));
     }
 
     function getRacerFrame(racer, animKey, speedMod, opts = {}) {
-      if (racer.finished) return 0;
-      if (animKey === 'finish') return 0;
       const bundle = getRacerSpriteBundle(racer, opts);
       if (animKey === 'jump') {
         const jumpData = (opts.race && bundle.jumpFrameData) ? bundle.jumpFrameData : bundle.frameData;
         return getJumpFrameIndex(racer, jumpData);
       }
+      if (animKey === 'finish') {
+        const finishData = (opts.race && bundle.finishFrameData) ? bundle.finishFrameData : bundle.frameData;
+        if (finishData?.finish && (opts.race ? bundle.finishSheet : bundle.sheet)) {
+          return getAnimFrame(animKey, globalAnimTime, racer.animOffset, speedMod, finishData);
+        }
+        return 0;
+      }
       const frameData = (opts.race && isRunAnimation(animKey) && bundle.runFrameData)
         ? bundle.runFrameData
         : bundle.frameData;
+      if (racer.postJumpSettle > 0 && isRunAnimation(animKey) && frameData?.[animKey]?.length) {
+        const elapsed = POST_JUMP_SETTLE_DURATION - racer.postJumpSettle;
+        const fps = ANIMATIONS[animKey]?.fps || 12;
+        return Math.floor(elapsed * fps) % frameData[animKey].length;
+      }
       return getAnimFrame(animKey, globalAnimTime, racer.animOffset, speedMod, frameData);
     }
 
@@ -3916,19 +4286,31 @@
       panel.innerHTML = '';
       STAT_NAMES.forEach(stat => {
         const val = gameState.player.stats[stat];
-        const pct = Math.min(100, (val / 25) * 100);
+        const pct = Math.min(100, (val / MAX_STAT) * 100);
+        const capped = val >= MAX_STAT ? ' capped' : '';
         panel.innerHTML += `
-          <div class="stat-row">
+          <div class="stat-row${capped}">
             <span class="stat-label">${STAT_LABELS[stat]}</span>
             <div class="stat-bar-bg"><div class="stat-bar-fill" style="width:${pct}%"></div></div>
-            <span class="stat-value">${val}</span>
+            <span class="stat-value">${val}/${MAX_STAT}</span>
           </div>`;
       });
+      updateTrainButtonStates();
     }
 
+    let trainButtonsGloballyEnabled = true;
+
     function setTrainButtonsEnabled(enabled) {
+      trainButtonsGloballyEnabled = !!enabled;
+      updateTrainButtonStates();
+    }
+
+    function updateTrainButtonStates() {
       document.querySelectorAll('.train-btn').forEach((btn) => {
-        btn.disabled = !enabled;
+        const stat = btn.dataset.stat;
+        const atCap = stat && gameState.player?.stats?.[stat] >= MAX_STAT;
+        btn.disabled = !trainButtonsGloballyEnabled || atCap;
+        btn.title = atCap ? `${STAT_LABELS[stat]} capped at ${MAX_STAT}` : '';
       });
     }
 
@@ -3938,7 +4320,8 @@
       STAT_NAMES.forEach(stat => {
         const btn = document.createElement('button');
         btn.className = 'train-btn';
-        btn.textContent = `+ ${STAT_LABELS[stat]}`;
+        btn.dataset.stat = stat;
+        btn.textContent = `+${TRAIN_STAT_GAIN} ${STAT_LABELS[stat]}`;
         btn.onclick = () => trainStat(stat);
         container.appendChild(btn);
       });
@@ -3962,19 +4345,48 @@
       if (el) el.textContent = gameState.player.name.toUpperCase();
     }
 
+    function enterTrainingScreen() {
+      gameState.phase = 'training';
+      showScreen('training-screen');
+      updateTrackUI();
+      updateTrainingUI();
+      drawPortrait();
+      renderTrainingRivals();
+      updateTrainingWaitStatus();
+      setTrainButtonsEnabled(!getLocalRoomPlayer()?.trainingComplete);
+      playTrainingBgm();
+      stopResultsBgm();
+    }
+
+    function startNextTrainingPhase() {
+      gameState.trackIndex = (gameState.trackIndex || 0) + 1;
+      gameState.turn = 1;
+      gameState.player.raceSkill = syncPrimaryRaceSkill(gameState.player.learnedSkills || []);
+      gameState.bonusOffered = false;
+      gameState.bonusDoneThisTurn = false;
+      gameState.bonusType = null;
+      enterTrainingScreen();
+    }
+
     function startTraining() {
       gameState.phase = 'training';
       if (isMultiplayer()) {
+        syncTrackIndexFromRoom();
         syncLocalPlayerFromRoom();
       } else {
         gameState.turn = 1;
+        gameState.trackIndex = 0;
         gameState.player.name = readRacerNameFromInput();
-        gameState.player.stats = { speed: 5, stamina: 5, agility: 5, focus: 5 };
+        gameState.player.stats = getStartingStatsForRacer(selectedRacerId);
         gameState.player.raceSkill = null;
+        gameState.player.learnedSkills = [];
+        gameState.bonusOffered = false;
+        gameState.bonusDoneThisTurn = false;
         gameState.player.racerId = selectedRacerId;
         applySelectedRacer(selectedRacerId);
       }
       showScreen('training-screen');
+      updateTrackUI();
       updateTrainingUI();
       drawPortrait();
       renderTrainingRivals();
@@ -3984,19 +4396,26 @@
     }
 
     function getRaceSkill(id) {
-      return RACE_SKILLS.find(skill => skill.id === id) || null;
+      return getRaceSkillById(id);
+    }
+
+    function formatLearnedSkillsHtml(skillIds) {
+      return (skillIds || []).map((skillId) => {
+        const skill = getRaceSkill(skillId);
+        return skill ? `${skill.name} — ${skill.description}` : skillId;
+      }).join('<br>');
     }
 
     function updateSkillDisplay() {
       const el = document.getElementById('skill-picked');
-      const skill = getRaceSkill(gameState.player.raceSkill);
-      if (!skill) {
+      const skills = gameState.player.learnedSkills || [];
+      if (!skills.length) {
         el.classList.add('hidden');
         el.textContent = '';
         return;
       }
       el.classList.remove('hidden');
-      el.innerHTML = `<strong>RACE SKILL</strong><br>${skill.name} — ${skill.description}`;
+      el.innerHTML = `<strong>RACE SKILLS</strong><br>${formatLearnedSkillsHtml(skills)}`;
     }
 
     function updateTrainingUI() {
@@ -4180,7 +4599,7 @@
       const modal = document.getElementById('training-modal');
       document.getElementById('training-modal-title').textContent = config.label;
       document.getElementById('training-modal-msg').textContent = pickTrainingMessage(stat);
-      document.getElementById('training-modal-stat').textContent = `${STAT_LABELS[stat]} +1`;
+      document.getElementById('training-modal-stat').textContent = `${STAT_LABELS[stat]} +${TRAIN_STAT_GAIN} · cap ${MAX_STAT}`;
 
       trainingAnimState = {
         stat,
@@ -4215,17 +4634,80 @@
       if (toggle) toggle.checked = trainingAnimationsEnabled;
     }
 
+    function canOfferSkillBonusLocal() {
+      return getAvailableSkillIds(gameState.player.learnedSkills || []).length > 0;
+    }
+
+    function grantRandomRaceSkillLocal() {
+      const learnedSkills = gameState.player.learnedSkills || [];
+      const skillId = pickRandomRaceSkill(learnedSkills);
+      if (!skillId) return null;
+      gameState.player.learnedSkills = recordLearnedSkill(learnedSkills, skillId);
+      gameState.player.raceSkill = syncPrimaryRaceSkill(gameState.player.learnedSkills);
+      return skillId;
+    }
+
+    function resolveTrainingBonusesLocal() {
+      let skillGranted = null;
+      if (gameState.turn === SKILL_TURN) {
+        skillGranted = grantRandomRaceSkillLocal() || skillGranted;
+      }
+      gameState.bonusOffered = Math.random() < BONUS_EVENT_CHANCE;
+      if (!gameState.bonusOffered) {
+        gameState.bonusDoneThisTurn = true;
+        gameState.bonusType = null;
+        return skillGranted;
+      }
+      if (canOfferSkillBonusLocal() && Math.random() < SKILL_BONUS_CHANCE) {
+        gameState.bonusType = 'skill';
+      } else {
+        gameState.bonusType = 'stat';
+      }
+      if (gameState.bonusType === 'skill' && !canOfferSkillBonusLocal()) {
+        gameState.bonusType = 'stat';
+      }
+      if (gameState.bonusType === 'skill') {
+        skillGranted = grantRandomRaceSkillLocal();
+        if (skillGranted) {
+          gameState.bonusDoneThisTurn = true;
+        } else {
+          gameState.bonusType = 'stat';
+          gameState.bonusDoneThisTurn = false;
+        }
+      } else {
+        gameState.bonusDoneThisTurn = false;
+      }
+      return skillGranted;
+    }
+
+    function handleTrainingNextStep(next, skillGranted) {
+      if (skillGranted) {
+        showSkillRevealModal(skillGranted, () => handleTrainingNextStep(next));
+        return;
+      }
+      if (next === 'skill-reveal') {
+        const latestSkill = gameState.player.learnedSkills?.[gameState.player.learnedSkills.length - 1];
+        showSkillRevealModal(latestSkill, () => advanceTurn());
+        return;
+      }
+      if (next === 'bonus') {
+        showBonusModal(() => advanceTurn());
+        return;
+      }
+      advanceTurn();
+    }
+
     function applyTrainingStat(stat) {
       if (isMultiplayer()) {
         multiplayer.socket.emit('training:train-stat', { stat }, (res) => {
           if (!res?.ok) return;
           syncLocalPlayerFromRoom();
           renderStats();
-          continueAfterTraining();
+          handleTrainingNextStep(res.next, res.skillGranted || null);
         });
         return;
       }
-      gameState.player.stats[stat]++;
+      gameState.player.stats[stat] = addStatGain(gameState.player.stats[stat], TRAIN_STAT_GAIN);
       renderStats();
       continueAfterTraining();
     }
@@ -4241,49 +4723,51 @@
     }
 
     function continueAfterTraining() {
-      if (gameState.turn === SKILL_TURN && !gameState.player.raceSkill) {
-        showSkillModal(() => continueAfterSkillPick());
-        return;
-      }
-      continueAfterSkillPick();
+      const skillGranted = resolveTrainingBonusesLocal();
+      handleTrainingNextStep(
+        gameState.bonusOffered && !gameState.bonusDoneThisTurn
+          ? (gameState.bonusType === 'skill' ? 'skill-reveal' : 'bonus')
+          : 'advance',
+        skillGranted
+      );
     }
 
-    function continueAfterSkillPick() {
-      if (BONUS_TURNS.includes(gameState.turn)) {
-        showBonusModal(() => advanceTurn());
-      } else {
-        advanceTurn();
-      }
-    }
-
-    function showSkillModal(callback) {
+    function showSkillRevealModal(skillId, callback) {
       const modal = document.getElementById('skill-modal');
       const options = document.getElementById('skill-options');
+      const prompt = document.getElementById('skill-reveal-text');
+      const title = modal?.querySelector('h3');
+      const skill = getRaceSkill(skillId);
       options.innerHTML = '';
 
-      RACE_SKILLS.forEach(skill => {
-        const btn = document.createElement('button');
-        btn.className = 'skill-btn';
-        btn.innerHTML = `<span class="skill-name">${skill.name}</span>${skill.description}`;
-        btn.onclick = () => {
-          const finish = () => {
-            updateSkillDisplay();
-            modal.classList.add('hidden');
-            callback();
-          };
-          if (isMultiplayer()) {
-            multiplayer.socket.emit('training:pick-skill', { skillId: skill.id }, (res) => {
-              if (!res?.ok) return;
-              syncLocalPlayerFromRoom();
-              finish();
-            });
-            return;
-          }
-          gameState.player.raceSkill = skill.id;
-          finish();
-        };
-        options.appendChild(btn);
-      });
+      if (title) {
+        title.textContent = skill ? `${skill.name.toUpperCase()} UNLOCKED!` : 'RACE SKILL UNLOCKED!';
+      }
+
+      if (prompt) {
+        prompt.textContent = skill
+          ? `You learned this ability during training.`
+          : 'You learned a new ability during training.';
+      }
+
+      if (skill) {
+        const card = document.createElement('div');
+        card.className = 'skill-reveal-card';
+        card.innerHTML = `<span class="skill-name">${skill.name}</span>${skill.description}`;
+        options.appendChild(card);
+      }
+
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'btn skill-confirm-btn';
+      btn.textContent = "LET'S GO!";
+      btn.onclick = () => {
+        updateSkillDisplay();
+        if (title) title.textContent = 'RACE SKILL UNLOCKED!';
+        modal.classList.add('hidden');
+        if (callback) callback();
+      };
+      options.appendChild(btn);
 
       modal.classList.remove('hidden');
     }
@@ -4308,6 +4792,9 @@
         return;
       }
       gameState.turn++;
+      gameState.bonusOffered = false;
+      gameState.bonusDoneThisTurn = false;
+      gameState.bonusType = null;
       updateTrainingUI();
     }
 
@@ -4331,6 +4818,85 @@
       }
     }
 
+    function appendLearnedSkillsToCard(card, racer) {
+      const skillIds = racer.isPlayer
+        ? (gameState.player.learnedSkills || getRacerLearnedSkills(racer))
+        : getRacerLearnedSkills(racer);
+      skillIds.forEach((skillId) => {
+        const skill = getRaceSkill(skillId);
+        if (!skill) return;
+        const skillEl = document.createElement('div');
+        skillEl.className = 'lineup-skill';
+        skillEl.textContent = `SKILL: ${skill.name}`;
+        card.appendChild(skillEl);
+      });
+    }
+
+    function appendRacerCardMeta(card, racer) {
+      const learned = getRacerLearnedSkills(racer.isPlayer
+        ? { ...racer, learnedSkills: gameState.player.learnedSkills, raceSkill: gameState.player.raceSkill }
+        : racer);
+      if (learned.length) {
+        appendLearnedSkillsToCard(card, racer);
+      } else if (!racer.isPlayer && !racer.isHuman) {
+        const style = CPU_RACER_STYLES.find(s => s.id === racer.cpuStyleId);
+        if (style) {
+          const tag = document.createElement('div');
+          tag.className = 'lineup-tag';
+          tag.textContent = style.label;
+          card.appendChild(tag);
+        }
+      } else if (racer.isHuman) {
+        const tag = document.createElement('div');
+        tag.className = 'lineup-tag';
+        tag.textContent = getRacerChoiceLabel(racer.racerId);
+        card.appendChild(tag);
+      }
+    }
+
+    function renderResultsGrid(sorted) {
+      const grid = document.getElementById('results-grid');
+      if (!grid) return;
+      grid.innerHTML = '';
+
+      const medals = ['1st', '2nd', '3rd'];
+      sorted.forEach((racer, index) => {
+        const place = index + 1;
+        const card = document.createElement('div');
+        card.className = 'lineup-card results-card' +
+          (racer.isPlayer ? ' player-card' : '') +
+          (place === 1 ? ' place-first' : '');
+
+        const placeEl = document.createElement('div');
+        placeEl.className = 'results-place';
+        placeEl.textContent = medals[index] || `${place}${getOrdinal(place)}`;
+
+        const canvas = document.createElement('canvas');
+        canvas.width = 64;
+        canvas.height = 64;
+        drawLineupPortrait(canvas, racer);
+
+        const name = document.createElement('div');
+        name.className = 'lineup-name';
+        name.textContent = racer.isPlayer ? `${racer.name} (YOU)` : racer.name;
+
+        const time = document.createElement('div');
+        time.className = 'results-time';
+        time.textContent = formatRaceTime(racer.finishTime);
+
+        const stats = document.createElement('div');
+        stats.className = 'lineup-stats';
+        stats.innerHTML = formatLineupStatsHtml(racer.stats);
+
+        card.appendChild(placeEl);
+        card.appendChild(canvas);
+        card.appendChild(name);
+        card.appendChild(time);
+        appendRacerCardMeta(card, racer);
+        card.appendChild(stats);
+        grid.appendChild(card);
+      });
+    }
     function renderLineupGrid() {
       const grid = document.getElementById('lineup-grid');
       grid.innerHTML = '';
@@ -4356,32 +4922,7 @@
         card.appendChild(canvas);
         card.appendChild(name);
 
-        if (racer.isPlayer && gameState.player.raceSkill) {
-          const skill = getRaceSkill(gameState.player.raceSkill);
-          const skillEl = document.createElement('div');
-          skillEl.className = 'lineup-skill';
-          skillEl.textContent = `SKILL: ${skill.name}`;
-          card.appendChild(skillEl);
-        } else if (racer.isHuman && racer.raceSkill) {
-          const skill = getRaceSkill(racer.raceSkill);
-          const skillEl = document.createElement('div');
-          skillEl.className = 'lineup-skill';
-          skillEl.textContent = `SKILL: ${skill.name}`;
-          card.appendChild(skillEl);
-        } else if (!racer.isPlayer && !racer.isHuman) {
-          const style = CPU_RACER_STYLES.find(s => s.id === racer.cpuStyleId);
-          if (style) {
-            const tag = document.createElement('div');
-            tag.className = 'lineup-tag';
-            tag.textContent = style.label;
-            card.appendChild(tag);
-          }
-        } else if (racer.isHuman) {
-          const tag = document.createElement('div');
-          tag.className = 'lineup-tag';
-          tag.textContent = getRacerChoiceLabel(racer.racerId);
-          card.appendChild(tag);
-        }
+        appendRacerCardMeta(card, racer);
 
         const stats = document.createElement('div');
         stats.className = 'lineup-stats';
@@ -4399,6 +4940,14 @@
         generateCPUs();
       }
       gameState.phase = 'lineup';
+      const track = getCurrentTrack();
+      const lineupTitle = document.querySelector('#lineup-screen h2');
+      const lineupSubtitle = document.querySelector('.lineup-subtitle');
+      if (lineupTitle) lineupTitle.textContent = `${track.subtitle} — LINEUP`;
+      if (lineupSubtitle) {
+        lineupSubtitle.textContent =
+          `Meet the field — need ${track.staminaRequirement}+ Stamina at 75% of lap on the ${track.name}.`;
+      }
       renderLineupGrid();
       updateLineupStartButton();
       playPreRaceBgm();
@@ -4435,7 +4984,7 @@
             });
             return;
           }
-          gameState.player.stats[stat] += 2;
+          gameState.player.stats[stat] = addStatGain(gameState.player.stats[stat], 2);
           finish();
         };
         options.appendChild(btn);
@@ -4472,7 +5021,8 @@
     }
 
     const CPU_STAT_MIN = 1;
-    const CPU_RACE_STAT_TOTAL = 20;
+    const CPU_RACE_STAT_TOTAL = 100;
+    const CPU_MIN_SPEED_STAT = 35;
     const CPU_MIN_RACE_SPEED = 5;
 
     function getCpuRunners() {
@@ -4484,9 +5034,14 @@
     }
 
     function rollRandomCpuStats(total = CPU_RACE_STAT_TOTAL) {
-      const stats = { speed: CPU_STAT_MIN, stamina: CPU_STAT_MIN, agility: CPU_STAT_MIN, focus: CPU_STAT_MIN };
       const keys = ['speed', 'stamina', 'agility', 'focus'];
-      let remaining = total - CPU_STAT_MIN * keys.length;
+      const stats = {
+        speed: CPU_MIN_SPEED_STAT,
+        stamina: CPU_STAT_MIN,
+        agility: CPU_STAT_MIN,
+        focus: CPU_STAT_MIN
+      };
+      let remaining = total - CPU_MIN_SPEED_STAT - CPU_STAT_MIN * 3;
 
       while (remaining > 0) {
         stats[keys[Math.floor(Math.random() * keys.length)]]++;
@@ -4520,7 +5075,7 @@
 
     function getEffectiveRaceSpeed(racer) {
       let speed = racer?.currentSpeed || 0;
-      if (racer?.staminaPenalty) speed *= 0.75;
+      if (racer?.staminaPenalty) speed *= STAMINA_PENALTY_SPEED_MULT;
       return speed;
     }
 
@@ -4569,7 +5124,12 @@
     function createRacerState(racer, lane) {
       const state = {
         ...racer,
-        raceSkill: racer.isPlayer ? (gameState.player.raceSkill || racer.raceSkill || null) : racer.raceSkill,
+        learnedSkills: racer.isPlayer
+          ? [...(gameState.player.learnedSkills || [])]
+          : [...getRacerLearnedSkills(racer)],
+        raceSkill: racer.isPlayer
+          ? syncPrimaryRaceSkill(gameState.player.learnedSkills || [])
+          : syncPrimaryRaceSkill(getRacerLearnedSkills(racer)),
         lane,
         position: 0,
         currentSpeed: calcBaseSpeed(racer),
@@ -4587,6 +5147,7 @@
         activeHurdleIndex: -1,
         jumping: false,
         jumpTimer: 0,
+        postJumpSettle: 0,
         hurdleRecovering: false,
         hurdleRecoveryTimer: 0,
         hurdleRecoveryDuration: 0,
@@ -4665,9 +5226,13 @@
       }
     }
 
-    function getRacerRaceSkill(racer) {
-      if (racer.isPlayer) return gameState.player.raceSkill || racer.raceSkill || null;
-      return racer.raceSkill || null;
+    function getRacerLearnedSkillsForRace(racer) {
+      if (racer.isPlayer) {
+        return gameState.player.learnedSkills?.length
+          ? [...gameState.player.learnedSkills]
+          : getRacerLearnedSkills(racer);
+      }
+      return getRacerLearnedSkills(racer);
     }
 
     function getEffectiveStamina(racer) {
@@ -4676,30 +5241,44 @@
     }
 
     function applyRaceSkills(racer) {
-      if (!racer.isPlayer) return;
-      const raceSkill = getRacerRaceSkill(racer);
-      if (!raceSkill) return;
+      const skills = getRacerLearnedSkillsForRace(racer);
+      if (!skills.length) return;
 
       const progress = getLapProgress(racer.position);
+      const hasSkill = (id) => skills.includes(id);
+      const logSkill = (msg) => {
+        if (racer.isPlayer) gameState.eventLog.push(msg);
+      };
 
-      if (raceSkill === 'secondWind' && !racer.skillTriggers.secondWind && progress >= 0.5) {
+      if (hasSkill('secondWind') && !racer.skillTriggers.secondWind && progress >= 0.5) {
         racer.skillTriggers.secondWind = true;
         racer.stats.stamina += 10;
         racer.staminaDrain = Math.max(0, racer.staminaDrain - 10);
         racer.staminaPenalty = false;
-        gameState.eventLog.push('Second Wind! +10 Stamina — fatigue held back!');
+        logSkill('Second Wind! +10 Stamina — fatigue held back!');
       }
 
-      if (raceSkill === 'midraceSurge' && !racer.skillTriggers.midraceSurge && progress >= 0.5) {
+      if (hasSkill('midraceSurge') && !racer.skillTriggers.midraceSurge && progress >= 0.5) {
         racer.skillTriggers.midraceSurge = true;
         racer.currentSpeed += 20;
-        gameState.eventLog.push('Midrace Surge! +20 Speed!');
+        logSkill('Midrace Surge! +20 Speed!');
       }
 
-      if (raceSkill === 'finalKick' && !racer.skillTriggers.finalKick && progress >= 0.75) {
+      if (hasSkill('finalKick') && !racer.skillTriggers.finalKick && progress >= 0.75) {
         racer.skillTriggers.finalKick = true;
         racer.currentSpeed += 30;
-        gameState.eventLog.push('Final Kick! +30 Speed!');
+        logSkill('Final Kick! +30 Speed!');
+      }
+
+      if (hasSkill('photoFinish') && !racer.skillTriggers.photoFinish && progress >= PHOTO_FINISH_PROGRESS) {
+        racer.skillTriggers.photoFinish = true;
+        const boost = getPhotoFinishBoost(racer, gameState.racers);
+        racer.currentSpeed += boost;
+        logSkill(
+          boost > PHOTO_FINISH_SPEED
+            ? `Photo Finish! +${boost} Speed — closing the gap!`
+            : `Photo Finish! +${boost} Speed!`
+        );
       }
     }
 
@@ -4724,7 +5303,8 @@
           hurdleRecovering: r.hurdleRecovering,
           hurdleRecoveryTimer: r.hurdleRecoveryTimer,
           hurdleRecoveryDuration: r.hurdleRecoveryDuration,
-          hurdleRecoveryTarget: r.hurdleRecoveryTarget
+          hurdleRecoveryTarget: r.hurdleRecoveryTarget,
+          postJumpSettle: r.postJumpSettle || 0
         }))
       });
     }
@@ -4784,7 +5364,8 @@
           hurdleRecovering: u >= 0.5 ? rb.hurdleRecovering : ra.hurdleRecovering,
           hurdleRecoveryTimer: ra.hurdleRecoveryTimer + (rb.hurdleRecoveryTimer - ra.hurdleRecoveryTimer) * u,
           hurdleRecoveryDuration: ra.hurdleRecoveryDuration + (rb.hurdleRecoveryDuration - ra.hurdleRecoveryDuration) * u,
-          hurdleRecoveryTarget: ra.hurdleRecoveryTarget + (rb.hurdleRecoveryTarget - ra.hurdleRecoveryTarget) * u
+          hurdleRecoveryTarget: ra.hurdleRecoveryTarget + (rb.hurdleRecoveryTarget - ra.hurdleRecoveryTarget) * u,
+          postJumpSettle: Math.max(0, (ra.postJumpSettle || 0) + ((rb.postJumpSettle || 0) - (ra.postJumpSettle || 0)) * u)
         };
       });
     }
@@ -4913,10 +5494,8 @@
       setRaceSpeedControlsVisible(false);
       resetRaceSpeed();
       stopRaceBgm();
-      gameState.phase = 'results';
       gameState.replayRacers = null;
-      showScreen('results-screen');
-      playResultsBgm();
+      showResults();
     }
 
     function replayLoop(timestamp) {
@@ -4976,9 +5555,11 @@
       gameState.raceRunning = true;
       gameState.raceFinished = false;
       gameState.resultsDelay = 0;
-      const skill = getRaceSkill(gameState.player.raceSkill);
-      gameState.eventLog = skill
-        ? [`The race has begun! Hurdles at 15% & 60% — Agility recovers speed!`, `Skill ready: ${skill.name}`]
+      const readySkills = (gameState.player.learnedSkills || [])
+        .map((id) => getRaceSkill(id)?.name)
+        .filter(Boolean);
+      gameState.eventLog = readySkills.length
+        ? [`The race has begun! Hurdles at 15% & 60% — Agility recovers speed!`, `Skills ready: ${readySkills.join(', ')}`]
         : [`The race has begun! Go ${gameState.player.name}!`, 'Hurdles at 15% & 60% — Agility recovers speed!'];
       gameState.raceTime = 0;
       lastTime = 0;
@@ -5039,10 +5620,10 @@
           racer.staminaChecked = true;
           const effectiveStamina = getEffectiveStamina(racer);
           const secondWindSave = racer.isPlayer && racer.skillTriggers?.secondWind;
-          if (effectiveStamina < STAMINA_REQUIREMENT && !secondWindSave) {
+          if (effectiveStamina < getStaminaRequirement() && !secondWindSave) {
             racer.staminaPenalty = true;
             if (racer.isPlayer) {
-              gameState.eventLog.push('Stamina fading! Speed -25%!');
+              gameState.eventLog.push('Stamina fading! Speed -80%!');
             }
           } else if (secondWindSave && racer.isPlayer) {
             gameState.eventLog.push('Second Wind keeps your pace strong!');
@@ -5052,7 +5633,7 @@
         let speed = racer.currentSpeed;
 
         if (racer.staminaPenalty) {
-          speed *= 0.75;
+          speed *= STAMINA_PENALTY_SPEED_MULT;
         }
 
         // Passing logic
@@ -5123,6 +5704,9 @@
           recordReplaySample(scaledDt);
           finalizeReplayRecording();
         }
+        if (gameState.raceRunning || gameState.raceFinished) {
+          updateRacerVisualState(scaledDt);
+        }
         drawRace();
         if (gameState.raceFinished) {
           gameState.resultsDelay -= scaledDt;
@@ -5168,11 +5752,13 @@
         const animKey = getRacerAnimation(racer);
         const speedMod = getRacerAnimSpeed(racer);
         const frame = getRacerFrame(racer, animKey, speedMod, raceOpts);
-        const jumpLift = animKey === 'jump' ? getJumpLift(racer, spriteH) : 0;
+        const jumpLift = animKey === 'jump'
+          ? getJumpLift(racer, spriteH)
+          : getPostJumpLift(racer, spriteH);
 
         let spriteTop = pt.y - spriteH;
         const spriteBundle = getRacerSpriteBundle(racer, raceOpts);
-        if (spriteBundle.sheet || spriteBundle.runSheet || spriteBundle.jumpSheet || spriteBundle.runGif) {
+        if (spriteBundle.sheet || spriteBundle.runSheet || spriteBundle.jumpSheet || spriteBundle.finishSheet || spriteBundle.runGif) {
           const drawn = drawRacerFrame(
             ctx, pt.x, pt.y - jumpLift, animKey, frame, spriteH, pt.tangent, spriteBundle
           );
@@ -5243,6 +5829,25 @@
     }
 
     // --- Results ---
+    function updateResultsContinueButton() {
+      const btn = document.getElementById('restart-btn');
+      if (!btn) return;
+      if (hasMoreTracks()) {
+        const nextTrack = getTrack((gameState.trackIndex ?? 0) + 1);
+        if (isMultiplayer()) {
+          const isHost = multiplayer.room?.hostId === multiplayer.playerId;
+          btn.textContent = isHost ? `START ${nextTrack.subtitle}` : 'WAITING FOR HOST...';
+          btn.disabled = !isHost;
+        } else {
+          btn.textContent = `TRAIN FOR ${nextTrack.subtitle}`;
+          btn.disabled = false;
+        }
+      } else {
+        btn.textContent = 'PLAY AGAIN';
+        btn.disabled = false;
+      }
+    }
+
     function showResults() {
       setRaceSkipVisible(false);
       setReplaySkipVisible(false);
@@ -5265,43 +5870,20 @@
 
       const title = document.getElementById('result-title');
       const text = document.getElementById('result-text');
+      const track = getCurrentTrack();
       title.className = won ? 'win' : 'lose';
-      title.textContent = won ? 'VICTORY!' : 'DEFEAT...';
-
-      const medals = ['🥇', '🥈', '🥉', '4th', '5th', '6th'];
-      let standings = sorted.map((r, i) =>
-        `${medals[i] || (i+1)+'th'} ${r.name}${r.isPlayer ? ' (YOU)' : ''} — ${formatRaceTime(r.finishTime)}`
-      ).join('<br>');
+      title.textContent = `${track.subtitle} — ${won ? 'VICTORY!' : 'DEFEAT...'}`;
 
       text.innerHTML = won
         ? 'Your catgirl crossed the line first!<br>Nya nya~!'
         : `You finished ${playerPos}${getOrdinal(playerPos)}.<br>Train harder next time!`;
-      text.innerHTML += `<br><br><strong>RACE TIME: ${playerTime}</strong>`;
-      text.innerHTML += '<br><br><strong>STANDINGS</strong><br>' + standings;
+      text.innerHTML += `<br><br><strong>YOUR TIME: ${playerTime}</strong>`;
 
-      const stats = gameState.player.stats;
-      const skill = getRaceSkill(gameState.player.raceSkill);
-      const skillLine = skill
-        ? `<br>SKILL: ${skill.name} (${skill.description})`
-        : '';
-
-      document.getElementById('final-stats').innerHTML =
-        `<strong>YOUR FINAL STATS</strong><br>` +
-        `SPEED: ${stats.speed} | STAMINA: ${stats.stamina} | AGILITY: ${stats.agility} | FOCUS: ${stats.focus}` +
-        skillLine;
+      renderResultsGrid(sorted);
 
       const replayBtn = document.getElementById('replay-btn');
       replayBtn.disabled = !raceReplay.finalized || raceReplay.frames.length < 2;
-
-      const canvas = document.getElementById('results-canvas');
-      const ctx = canvas.getContext('2d');
-      ctx.imageSmoothingEnabled = false;
-      ctx.fillStyle = '#2d1b4e';
-      ctx.fillRect(0, 0, 120, 120);
-      if (spritesReady) {
-        const animKey = won ? 'finish' : 'portrait';
-        drawSpriteFrame(ctx, 10, 110, animKey, 0, 95);
-      }
+      updateResultsContinueButton();
     }
 
     function uiAnimLoop(timestamp) {
@@ -5359,6 +5941,17 @@
       btn.onclick = () => setRaceSpeed(Number(btn.dataset.speed));
     });
     document.getElementById('restart-btn').onclick = () => {
+      if (gameState.phase === 'results' && hasMoreTracks()) {
+        if (isMultiplayer()) {
+          multiplayer.socket.emit('host:start-next-training', {}, (res) => {
+            if (!res?.ok) return;
+            if (res.trackIndex != null) gameState.trackIndex = res.trackIndex;
+          });
+          return;
+        }
+        startNextTrainingPhase();
+        return;
+      }
       stopSetupBgm();
       stopTrainingBgm();
       stopPreRaceBgm();
@@ -5417,10 +6010,10 @@
       });
     }
 
-    Promise.all([loadSprites(), loadTrack(), loadHurdle(), loadTrainingJacksSprite()])
-      .then(([spritesLoaded]) => {
+    Promise.all([loadSprites(), ensureCpuRaceSheetsLoaded(), loadTrack(), loadHurdle(), loadTrainingJacksSprite()])
+      .then(([spritesLoaded, cpuSheetsLoaded]) => {
         renderRacerOptions();
-        enableStartButton(spritesLoaded);
+        enableStartButton(spritesLoaded && cpuSheetsLoaded !== false);
         playTitleBgm();
       })
       .catch((err) => {

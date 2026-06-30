@@ -3,7 +3,8 @@
 # ============================================================
 #
 # Edit this file to set CPU opponent names for the race.
-# Each CPU gets random race stats totaling 20 (Speed/Stamina/Agility).
+# Each CPU gets random race stats totaling 100 (Speed/Stamina/Agility/Focus).
+# Speed is always at least 35; the stat numbers on each line are ignored.
 #
 # Format (one runner per line):
 #   Name, Speed, Stamina, Agility

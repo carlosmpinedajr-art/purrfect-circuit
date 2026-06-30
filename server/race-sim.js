@@ -1,11 +1,18 @@
 const { createRng } = require('./rng');
+const { getTrack } = require('../tracks');
+const {
+  PHOTO_FINISH_PROGRESS,
+  getPhotoFinishBoost,
+  getRacerLearnedSkills,
+  syncPrimaryRaceSkill
+} = require('../race-skills');
 
 const RACE_LANE_COUNT = 6;
-const STAMINA_REQUIREMENT = 15;
 const LAP_LENGTH = 1000;
 const TOTAL_LAPS = 1;
 const RACE_LENGTH = LAP_LENGTH * TOTAL_LAPS;
 const STAMINA_CHECK_POINT = 0.75;
+const STAMINA_PENALTY_SPEED_MULT = 0.2;
 const HURDLE_PROGRESSES = [0.15, 0.60];
 const HURDLE_JUMP_LEAD = 24;
 const HURDLE_CLEAR_TRAIL = 8;
@@ -14,7 +21,8 @@ const HURDLE_JUMP_MIN_HALF = 18;
 const HURDLE_SPEED_MULTIPLIER = 0.5;
 const HURDLE_RECOVERY_BASE_SEC = 3;
 const CPU_STAT_MIN = 1;
-const CPU_RACE_STAT_TOTAL = 20;
+const CPU_RACE_STAT_TOTAL = 100;
+const CPU_MIN_SPEED_STAT = 35;
 const CPU_MIN_RACE_SPEED = 5;
 const PACE_VARIANCE_MAX = 0.10;
 const PACE_VARIANCE_MIN = 0.04;
@@ -132,9 +140,14 @@ function getPaceVarianceMultiplier(racer, rng) {
 }
 
 function rollRandomCpuStats(rng, total = CPU_RACE_STAT_TOTAL) {
-  const stats = { speed: CPU_STAT_MIN, stamina: CPU_STAT_MIN, agility: CPU_STAT_MIN, focus: CPU_STAT_MIN };
   const keys = ['speed', 'stamina', 'agility', 'focus'];
-  let remaining = total - CPU_STAT_MIN * keys.length;
+  const stats = {
+    speed: CPU_MIN_SPEED_STAT,
+    stamina: CPU_STAT_MIN,
+    agility: CPU_STAT_MIN,
+    focus: CPU_STAT_MIN
+  };
+  let remaining = total - CPU_MIN_SPEED_STAT - CPU_STAT_MIN * 3;
   while (remaining > 0) {
     stats[keys[Math.floor(rng.next() * keys.length)]]++;
     remaining--;
@@ -149,7 +162,8 @@ function buildLineupField(room) {
     playerId: p.id,
     name: p.name || 'Racer',
     stats: { ...p.stats },
-    raceSkill: p.raceSkill || null,
+    learnedSkills: [...(p.learnedSkills || [])],
+    raceSkill: syncPrimaryRaceSkill(p.learnedSkills || []) || p.raceSkill || null,
     racerId: p.racerId || 'purple',
     isHuman: true,
     lane: i,
@@ -185,7 +199,8 @@ function serializeFieldEntry(entry) {
     playerId: entry.playerId,
     name: entry.name,
     stats: { ...entry.stats },
-    raceSkill: entry.raceSkill,
+    learnedSkills: [...(entry.learnedSkills || getRacerLearnedSkills(entry))],
+    raceSkill: entry.raceSkill || syncPrimaryRaceSkill(entry.learnedSkills),
     racerId: entry.racerId,
     cpuStyleId: entry.cpuStyleId || null,
     isHuman: !!entry.isHuman,
@@ -243,13 +258,14 @@ function pushEvent(events, racer, text, audiencePlayerId = null) {
   });
 }
 
-function applyRaceSkills(racer, events) {
-  const raceSkill = racer.raceSkill;
-  if (!raceSkill) return;
+function applyRaceSkills(racer, events, allRacers) {
+  const skills = getRacerLearnedSkills(racer);
+  if (!skills.length) return;
 
   const progress = getLapProgress(racer.position);
+  const hasSkill = (id) => skills.includes(id);
 
-  if (raceSkill === 'secondWind' && !racer.skillTriggers.secondWind && progress >= 0.5) {
+  if (hasSkill('secondWind') && !racer.skillTriggers.secondWind && progress >= 0.5) {
     racer.skillTriggers.secondWind = true;
     racer.stats.stamina += 10;
     racer.staminaDrain = Math.max(0, racer.staminaDrain - 10);
@@ -259,7 +275,7 @@ function applyRaceSkills(racer, events) {
     }
   }
 
-  if (raceSkill === 'midraceSurge' && !racer.skillTriggers.midraceSurge && progress >= 0.5) {
+  if (hasSkill('midraceSurge') && !racer.skillTriggers.midraceSurge && progress >= 0.5) {
     racer.skillTriggers.midraceSurge = true;
     racer.currentSpeed += 20;
     if (racer.playerId) {
@@ -267,11 +283,24 @@ function applyRaceSkills(racer, events) {
     }
   }
 
-  if (raceSkill === 'finalKick' && !racer.skillTriggers.finalKick && progress >= 0.75) {
+  if (hasSkill('finalKick') && !racer.skillTriggers.finalKick && progress >= 0.75) {
     racer.skillTriggers.finalKick = true;
     racer.currentSpeed += 30;
     if (racer.playerId) {
       pushEvent(events, racer, 'Final Kick! +30 Speed!');
+    }
+  }
+
+  if (hasSkill('photoFinish') && !racer.skillTriggers.photoFinish && progress >= PHOTO_FINISH_PROGRESS) {
+    racer.skillTriggers.photoFinish = true;
+    const boost = getPhotoFinishBoost(racer, allRacers || [racer]);
+    racer.currentSpeed += boost;
+    if (racer.playerId) {
+      pushEvent(
+        events,
+        racer,
+        boost > 25 ? `Photo Finish! +${boost} Speed — closing the gap!` : `Photo Finish! +${boost} Speed!`
+      );
     }
   }
 }
@@ -341,11 +370,15 @@ function updateHurdleForRacer(racer, dt, events) {
 }
 
 function createRaceState(room) {
+  const track = getTrack(room.trackIndex || 0);
   const rng = createRng(room.seed ^ 0x9e3779b9);
   return {
     running: true,
     finished: false,
     time: 0,
+    trackIndex: room.trackIndex || 0,
+    trackName: track.subtitle,
+    staminaRequirement: track.staminaRequirement,
     racers: (room.field || []).map(createRacerState),
     rng
   };
@@ -385,7 +418,7 @@ function raceTick(race, dt) {
 
     racer.staminaDrain += dt * 0.8;
     const lapProgress = getLapProgress(racer.position);
-    applyRaceSkills(racer, events);
+    applyRaceSkills(racer, events, race.racers);
     updateHurdleForRacer(racer, dt, events);
 
     if (!racer.playerId && !racer.finished) {
@@ -396,10 +429,10 @@ function raceTick(race, dt) {
       racer.staminaChecked = true;
       const effectiveStamina = getEffectiveStamina(racer);
       const secondWindSave = racer.skillTriggers?.secondWind;
-      if (effectiveStamina < STAMINA_REQUIREMENT && !secondWindSave) {
+      if (effectiveStamina < race.staminaRequirement && !secondWindSave) {
         racer.staminaPenalty = true;
         if (racer.playerId) {
-          pushEvent(events, racer, 'Stamina fading! Speed -25%!');
+          pushEvent(events, racer, 'Stamina fading! Speed -80%!');
         }
       } else if (secondWindSave && racer.playerId) {
         pushEvent(events, racer, 'Second Wind keeps your pace strong!');
@@ -407,7 +440,7 @@ function raceTick(race, dt) {
     }
 
     let speed = racer.currentSpeed;
-    if (racer.staminaPenalty) speed *= 0.75;
+    if (racer.staminaPenalty) speed *= STAMINA_PENALTY_SPEED_MULT;
 
     if (racer.passingCooldown > 0) {
       racer.passingCooldown -= dt;
@@ -461,7 +494,10 @@ function serializeRaceStart(room, race) {
   return {
     field: (room.field || []).map(serializeFieldEntry),
     racers: race.racers.map(serializeRacerTick),
-    time: race.time
+    time: race.time,
+    trackIndex: race.trackIndex,
+    trackName: race.trackName,
+    staminaRequirement: race.staminaRequirement
   };
 }
 
@@ -494,7 +530,7 @@ function serializeRaceResults(race) {
 
 function getEffectiveRaceSpeed(racer) {
   let speed = racer?.currentSpeed || 0;
-  if (racer?.staminaPenalty) speed *= 0.75;
+  if (racer?.staminaPenalty) speed *= STAMINA_PENALTY_SPEED_MULT;
   return speed;
 }
 
@@ -543,6 +579,9 @@ function serializeRaceSync(room) {
     racers: room.race.racers.map(serializeRacerTick),
     time: room.race.time,
     finished: room.race.finished,
+    trackIndex: room.race.trackIndex,
+    trackName: room.race.trackName,
+    staminaRequirement: room.race.staminaRequirement,
     results: room.race.finished ? serializeRaceResults(room.race) : null
   };
 }

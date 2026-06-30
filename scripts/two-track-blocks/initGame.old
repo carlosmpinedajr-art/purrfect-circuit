@@ -1,0 +1,4 @@
+    function initGame() {
+      gameState = {
+        phase: 'splash',
+        turn: 1,

@@ -18,12 +18,13 @@ const {
 } = require('./rooms');
 const {
   initRoomTraining,
+  initRoomTrainingPhase2,
   trainStat,
-  pickSkill,
   pickBonus,
   advanceTrainingTurn,
   allTrainingComplete
 } = require('./training');
+const { hasMoreTracks } = require('../tracks');
 const {
   buildLineupField,
   createRaceState,
@@ -210,22 +211,6 @@ io.on('connection', (socket) => {
     if (typeof ack === 'function') ack({ ok: true, next: result.next });
   });
 
-  socket.on('training:pick-skill', (data, ack) => {
-    const room = findRoomByPlayer(socket.id);
-    if (!room || room.phase !== 'training') {
-      if (typeof ack === 'function') ack({ ok: false, error: 'Not in training' });
-      return;
-    }
-    const player = getPlayerBySocket(room, socket.id);
-    const result = pickSkill(player, data?.skillId);
-    if (result.error) {
-      if (typeof ack === 'function') ack({ ok: false, error: result.error });
-      return;
-    }
-    broadcastRoom(room);
-    if (typeof ack === 'function') ack({ ok: true, next: result.next });
-  });
-
   socket.on('training:pick-bonus', (data, ack) => {
     const room = findRoomByPlayer(socket.id);
     if (!room || room.phase !== 'training') {
@@ -257,6 +242,34 @@ io.on('connection', (socket) => {
     broadcastRoom(room);
     if (typeof ack === 'function') ack({ ok: true, complete: result.complete });
     maybeStartLineup(room);
+  });
+
+  socket.on('host:start-next-training', (ack) => {
+    const room = findRoomByPlayer(socket.id);
+    if (!room) {
+      if (typeof ack === 'function') ack({ ok: false, error: 'Not in a room' });
+      return;
+    }
+    if (room.hostId !== getPlayerToken(room, socket.id)) {
+      if (typeof ack === 'function') ack({ ok: false, error: 'Only the host can continue' });
+      return;
+    }
+    if (room.phase !== 'results') {
+      if (typeof ack === 'function') ack({ ok: false, error: 'Can only continue after race results' });
+      return;
+    }
+    if (!hasMoreTracks(room.trackIndex || 0)) {
+      if (typeof ack === 'function') ack({ ok: false, error: 'No more tracks in this event' });
+      return;
+    }
+    room.trackIndex = (room.trackIndex || 0) + 1;
+    room.field = [];
+    room.raceResults = null;
+    initRoomTrainingPhase2(room);
+    setRoomPhase(room, 'training');
+    io.to(room.code).emit('room:phase', { phase: 'training', trackIndex: room.trackIndex });
+    broadcastRoom(room);
+    if (typeof ack === 'function') ack({ ok: true, trackIndex: room.trackIndex });
   });
 
   socket.on('host:start-race', (ack) => {

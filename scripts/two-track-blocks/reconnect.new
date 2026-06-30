@@ -1,0 +1,9 @@
+      if (phase === 'training') {
+        syncTrackIndexFromRoom();
+        if ((gameState.trackIndex || 0) > 0) {
+          enterTrainingScreen();
+        } else {
+          startTraining();
+        }
+        return;
+      }

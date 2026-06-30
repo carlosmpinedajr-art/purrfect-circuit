@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const { stopRace } = require('./race-sim');
+const { getStartingStatsForRacer } = require('../racer-stats');
 
 const MAX_PLAYERS = 6;
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -20,24 +21,22 @@ function generateToken() {
   return crypto.randomBytes(16).toString('hex');
 }
 
-function defaultStats() {
-  return { speed: 5, stamina: 5, agility: 5, focus: 5 };
-}
-
 function createPlayer(socketId, isHost = false) {
   const id = generateToken();
+  const racerId = 'purple';
   return {
     id,
     socketId,
     name: '',
-    racerId: 'purple',
+    racerId,
     isHost,
     ready: false,
     turn: 1,
     trainingTurn: 1,
     trainingComplete: false,
-    stats: defaultStats(),
+    stats: getStartingStatsForRacer(racerId),
     raceSkill: null,
+    learnedSkills: [],
     connected: true,
     _statDoneThisTurn: false,
     _bonusDoneThisTurn: false
@@ -57,6 +56,7 @@ function serializeRoom(room) {
   const payload = {
     code: room.code,
     phase: room.phase,
+    trackIndex: room.trackIndex || 0,
     hostId: room.hostId,
     players: Object.values(room.players).map((p) => ({
       id: p.id,
@@ -68,7 +68,8 @@ function serializeRoom(room) {
       trainingTurn: p.trainingTurn,
       trainingComplete: p.trainingComplete,
       stats: { ...p.stats },
-      raceSkill: p.raceSkill,
+      raceSkill: p.raceSkill || null,
+      learnedSkills: [...(p.learnedSkills || [])],
       connected: p.connected
     }))
   };
@@ -79,6 +80,7 @@ function serializeRoom(room) {
       name: entry.name,
       stats: { ...entry.stats },
       raceSkill: entry.raceSkill,
+      learnedSkills: [...(entry.learnedSkills || [])],
       racerId: entry.racerId,
       cpuStyleId: entry.cpuStyleId || null,
       isHuman: !!entry.isHuman,
@@ -96,6 +98,7 @@ function createRoom(hostSocketId) {
     code,
     hostId: host.id,
     phase: 'lobby',
+    trackIndex: 0,
     seed: (Date.now() ^ (Math.random() * 0xffffffff)) >>> 0,
     createdAt: Date.now(),
     field: [],

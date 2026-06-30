@@ -1,0 +1,5 @@
+      socket.on('room:updated', (room) => {
+        multiplayer.room = { ...multiplayer.room, ...room };
+        const me = room.players?.find((p) => p.id === multiplayer.playerId);
+        if (me) multiplayer.localReady = !!me.ready;
+        if (gameState.phase === 'lobby') renderLobby();

@@ -1,0 +1,2 @@
+      const track = getCurrentTrack();
+      title.textContent = `${track.subtitle} - ${won ? 'VICTORY!' : 'DEFEAT...'}`;

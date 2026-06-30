@@ -1,0 +1,22 @@
+    function startTraining() {
+      gameState.phase = 'training';
+      if (isMultiplayer()) {
+        syncLocalPlayerFromRoom();
+      } else {
+        gameState.turn = 1;
+        gameState.player.name = readRacerNameFromInput();
+        gameState.player.stats = getStartingStatsForRacer(selectedRacerId);
+        gameState.player.raceSkill = null;
+        gameState.bonusOffered = false;
+        gameState.bonusDoneThisTurn = false;
+        gameState.player.racerId = selectedRacerId;
+        applySelectedRacer(selectedRacerId);
+      }
+      showScreen('training-screen');
+      updateTrainingUI();
+      drawPortrait();
+      renderTrainingRivals();
+      updateTrainingWaitStatus();
+      setTrainButtonsEnabled(!getLocalRoomPlayer()?.trainingComplete);
+      playTrainingBgm();
+    }

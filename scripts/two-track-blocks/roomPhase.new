@@ -1,0 +1,16 @@
+      socket.on('room:phase', ({ phase, trackIndex }) => {
+        if (trackIndex != null) gameState.trackIndex = trackIndex;
+        if (phase === 'training' && gameState.phase === 'results') {
+          syncLocalPlayerFromRoom();
+          enterTrainingScreen();
+          return;
+        }
+        if (phase === 'training' && (gameState.phase === 'lobby' || gameState.phase === 'setup')) {
+          gameState.trackIndex = 0;
+          startTraining();
+          return;
+        }
+        if (phase === 'lineup' && (gameState.phase === 'training' || gameState.phase === 'lobby')) {
+          showLineupScreen();
+        }
+      });

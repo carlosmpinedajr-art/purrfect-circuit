@@ -1,0 +1,9 @@
+      socket.on('room:phase', ({ phase }) => {
+        if (phase === 'training' && (gameState.phase === 'lobby' || gameState.phase === 'setup')) {
+          startTraining();
+          return;
+        }
+        if (phase === 'lineup' && (gameState.phase === 'training' || gameState.phase === 'lobby')) {
+          showLineupScreen();
+        }
+      });

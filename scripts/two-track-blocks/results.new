@@ -1,0 +1,21 @@
+    // --- Results ---
+    function updateResultsContinueButton() {
+      const btn = document.getElementById('restart-btn');
+      if (!btn) return;
+      if (hasMoreTracks()) {
+        const nextTrack = getTrack((gameState.trackIndex ?? 0) + 1);
+        if (isMultiplayer()) {
+          const isHost = multiplayer.room?.hostId === multiplayer.playerId;
+          btn.textContent = isHost ? `START ${nextTrack.subtitle}` : 'WAITING FOR HOST...';
+          btn.disabled = !isHost;
+        } else {
+          btn.textContent = `TRAIN FOR ${nextTrack.subtitle}`;
+          btn.disabled = false;
+        }
+      } else {
+        btn.textContent = 'PLAY AGAIN';
+        btn.disabled = false;
+      }
+    }
+
+    function showResults() {

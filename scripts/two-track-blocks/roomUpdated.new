@@ -1,0 +1,7 @@
+      socket.on('room:updated', (room) => {
+        multiplayer.room = { ...multiplayer.room, ...room };
+        if (room.trackIndex != null) gameState.trackIndex = room.trackIndex;
+        const me = room.players?.find((p) => p.id === multiplayer.playerId);
+        if (me) multiplayer.localReady = !!me.ready;
+        if (gameState.phase === 'lobby') renderLobby();
+        if (gameState.phase === 'results') updateResultsContinueButton();

@@ -1,0 +1,20 @@
+    document.getElementById('restart-btn').onclick = () => {
+      stopSetupBgm();
+      stopTrainingBgm();
+      stopPreRaceBgm();
+      stopRaceBgm();
+      stopResultsBgm();
+      initGame();
+      multiplayer.mode = 'solo';
+      multiplayer.room = null;
+      multiplayer.playerId = null;
+      multiplayer.localReady = false;
+      multiplayer.racerMeta = {};
+      gameState.serverRace = false;
+      clearMultiplayerSession();
+      multiplayer.reconnectAttempted = false;
+      applySelectedRacer(selectedRacerId);
+      renderRacerOptions();
+      gameState.phase = 'splash';
+      showScreen('splash-screen');
+    };
