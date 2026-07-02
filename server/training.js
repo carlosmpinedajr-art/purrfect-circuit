@@ -7,7 +7,7 @@ const {
   SKILL_BONUS_CHANCE
 } = require('../racer-stats');
 const {
-  pickRandomRaceSkill,
+  pickRandomRaceSkillChoices,
   getAvailableSkillIds,
   recordLearnedSkill,
   syncPrimaryRaceSkill,
@@ -15,8 +15,13 @@ const {
 } = require('../race-skills');
 
 const MAX_TURNS = 10;
-const SKILL_TURN = 6;
 const STAT_NAMES = ['speed', 'stamina', 'agility', 'focus'];
+
+function clearSkillPickState(player) {
+  player._skillChoices = [];
+  player._skillPickPending = false;
+  player._skillPickSource = null;
+}
 
 function resetPlayerTraining(player) {
   player.turn = 1;
@@ -29,6 +34,8 @@ function resetPlayerTraining(player) {
   player._bonusOffered = false;
   player._bonusDoneThisTurn = false;
   player._bonusType = null;
+  player.campaignPoints = 0;
+  clearSkillPickState(player);
 }
 
 function resetPlayerTrainingPhase2(player) {
@@ -41,6 +48,7 @@ function resetPlayerTrainingPhase2(player) {
   player._bonusOffered = false;
   player._bonusDoneThisTurn = false;
   player._bonusType = null;
+  clearSkillPickState(player);
 }
 
 function initRoomTraining(room) {
@@ -52,17 +60,24 @@ function initRoomTrainingPhase2(room) {
   Object.values(room.players).forEach(resetPlayerTrainingPhase2);
 }
 
-function grantRandomRaceSkill(player) {
-  const learnedSkills = player.learnedSkills || [];
-  const skillId = pickRandomRaceSkill(learnedSkills);
-  if (!skillId) return null;
-  player.learnedSkills = recordLearnedSkill(learnedSkills, skillId);
-  player.raceSkill = syncPrimaryRaceSkill(player.learnedSkills);
-  return skillId;
-}
-
 function canOfferSkillBonus(player) {
   return getAvailableSkillIds(player.learnedSkills || []).length > 0;
+}
+
+function offerSkillPick(player, source) {
+  const choices = pickRandomRaceSkillChoices(player.learnedSkills, 2);
+  if (!choices.length) return false;
+  player._skillChoices = choices;
+  player._skillPickPending = true;
+  player._skillPickSource = source;
+  return true;
+}
+
+function maybeOfferTrainingSkillPick(player) {
+  if (player._skillPickPending) return false;
+  if (!canOfferSkillBonus(player)) return false;
+  if (Math.random() >= SKILL_BONUS_CHANCE) return false;
+  return offerSkillPick(player, 'train');
 }
 
 function offerBonusEvent(player) {
@@ -73,46 +88,26 @@ function offerBonusEvent(player) {
     player._bonusType = null;
     return;
   }
-  if (canOfferSkillBonus(player) && Math.random() < SKILL_BONUS_CHANCE) {
-    player._bonusType = 'skill';
-  } else {
-    player._bonusType = 'stat';
-  }
-}
-
-function normalizeBonusType(player) {
-  if (player._bonusOffered && player._bonusType === 'skill' && !canOfferSkillBonus(player)) {
-    player._bonusType = 'stat';
-  }
+  player._bonusType = 'stat';
 }
 
 function resolveTrainingBonuses(player) {
-  let skillGranted = null;
-
-  if (player.turn === SKILL_TURN) {
-    skillGranted = grantRandomRaceSkill(player) || skillGranted;
-  }
-
+  maybeOfferTrainingSkillPick(player);
   offerBonusEvent(player);
-  normalizeBonusType(player);
 
-  if (player._bonusOffered && player._bonusType === 'skill' && !player._bonusDoneThisTurn) {
-    skillGranted = grantRandomRaceSkill(player);
-    if (skillGranted) {
-      player._bonusDoneThisTurn = true;
-    } else {
-      player._bonusType = 'stat';
-    }
+  if (player._skillPickPending && player._bonusOffered) {
+    player._bonusDoneThisTurn = false;
   }
-
-  return skillGranted;
 }
 
 function getNextStep(player) {
-  if (player._bonusOffered && !player._bonusDoneThisTurn) {
-    return player._bonusType === 'skill' ? 'skill-reveal' : 'bonus';
-  }
+  if (player._skillPickPending) return 'skill-pick';
+  if (player._bonusOffered && !player._bonusDoneThisTurn) return 'bonus';
   return 'advance';
+}
+
+function getSkillChoicesForClient(player) {
+  return player._skillPickPending ? [...(player._skillChoices || [])] : null;
 }
 
 function trainStat(player, stat) {
@@ -124,9 +119,30 @@ function trainStat(player, stat) {
   player._statDoneThisTurn = true;
   player.trainingTurn = player.turn;
 
-  const skillGranted = resolveTrainingBonuses(player);
+  resolveTrainingBonuses(player);
 
-  return { ok: true, next: getNextStep(player), skillGranted: skillGranted || null };
+  return {
+    ok: true,
+    next: getNextStep(player),
+    skillChoices: getSkillChoicesForClient(player)
+  };
+}
+
+function pickSkill(player, skillId) {
+  if (player.trainingComplete) return { error: 'Training finished' };
+  if (!player._skillPickPending) return { error: 'No skill pick pending' };
+  if (!player._skillChoices?.includes(skillId)) return { error: 'Invalid skill choice' };
+
+  player.learnedSkills = recordLearnedSkill(player.learnedSkills, skillId);
+  player.raceSkill = syncPrimaryRaceSkill(player.learnedSkills);
+  clearSkillPickState(player);
+
+  return {
+    ok: true,
+    skillGranted: skillId,
+    next: getNextStep(player),
+    skillChoices: getSkillChoicesForClient(player)
+  };
 }
 
 function pickBonus(player, stat) {
@@ -145,6 +161,7 @@ function pickBonus(player, stat) {
 function advanceTrainingTurn(player) {
   if (player.trainingComplete) return { error: 'Training finished' };
   if (!player._statDoneThisTurn) return { error: 'Train a stat first' };
+  if (player._skillPickPending) return { error: 'Pick a skill first' };
   if (player._bonusOffered && !player._bonusDoneThisTurn) {
     return { error: 'Resolve the training event first' };
   }
@@ -161,6 +178,7 @@ function advanceTrainingTurn(player) {
   player._bonusOffered = false;
   player._bonusDoneThisTurn = false;
   player._bonusType = null;
+  clearSkillPickState(player);
   return { ok: true, complete: false };
 }
 
@@ -169,14 +187,25 @@ function allTrainingComplete(room) {
   return players.length > 0 && players.every((p) => p.connected && p.trainingComplete);
 }
 
+function resetRoomForPlayAgain(room) {
+  room.trackIndex = 0;
+  room.field = [];
+  room.raceResults = null;
+  Object.values(room.players).forEach((player) => {
+    resetPlayerTraining(player);
+    player.ready = false;
+  });
+}
+
 module.exports = {
   MAX_TURNS,
-  SKILL_TURN,
   resetPlayerTraining,
   resetPlayerTrainingPhase2,
   initRoomTraining,
   initRoomTrainingPhase2,
+  resetRoomForPlayAgain,
   trainStat,
+  pickSkill,
   pickBonus,
   advanceTrainingTurn,
   allTrainingComplete,

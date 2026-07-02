@@ -1,4 +1,5 @@
 const path = require('path');
+const os = require('os');
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -14,17 +15,21 @@ const {
   setRoomPhase,
   findRoomByPlayer,
   getPlayerBySocket,
-  getPlayerToken
+  getPlayerToken,
+  leaveRoom
 } = require('./rooms');
 const {
   initRoomTraining,
   initRoomTrainingPhase2,
+  resetRoomForPlayAgain,
   trainStat,
+  pickSkill,
   pickBonus,
   advanceTrainingTurn,
   allTrainingComplete
 } = require('./training');
 const { hasMoreTracks } = require('../tracks');
+const { buildRaceScoring } = require('../scoring');
 const {
   buildLineupField,
   createRaceState,
@@ -44,9 +49,13 @@ const PORT = process.env.PORT || 3000;
 const ROOT = path.join(__dirname, '..');
 
 const app = express();
+app.set('trust proxy', 1);
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: { origin: '*' }
+  cors: { origin: '*' },
+  transports: ['websocket', 'polling'],
+  pingTimeout: 60000,
+  pingInterval: 25000
 });
 
 app.get('/health', (req, res) => {
@@ -76,7 +85,10 @@ function buildSyncPayload(room) {
 function finishRace(room) {
   stopRace(room);
   if (room.race) {
-    room.raceResults = serializeRaceResults(room.race);
+    room.raceResults = {
+      ...serializeRaceResults(room.race),
+      ...buildRaceScoring(room, room.race)
+    };
   }
   setRoomPhase(room, 'results');
   io.to(room.code).emit('race:finished', room.raceResults);
@@ -208,7 +220,32 @@ io.on('connection', (socket) => {
       return;
     }
     broadcastRoom(room);
-    if (typeof ack === 'function') ack({ ok: true, next: result.next });
+    if (typeof ack === 'function') {
+      ack({ ok: true, next: result.next, skillChoices: result.skillChoices || null });
+    }
+  });
+
+  socket.on('training:pick-skill', (data, ack) => {
+    const room = findRoomByPlayer(socket.id);
+    if (!room || room.phase !== 'training') {
+      if (typeof ack === 'function') ack({ ok: false, error: 'Not in training' });
+      return;
+    }
+    const player = getPlayerBySocket(room, socket.id);
+    const result = pickSkill(player, data?.skillId);
+    if (result.error) {
+      if (typeof ack === 'function') ack({ ok: false, error: result.error });
+      return;
+    }
+    broadcastRoom(room);
+    if (typeof ack === 'function') {
+      ack({
+        ok: true,
+        skillGranted: result.skillGranted,
+        next: result.next,
+        skillChoices: result.skillChoices || null
+      });
+    }
   });
 
   socket.on('training:pick-bonus', (data, ack) => {
@@ -242,6 +279,41 @@ io.on('connection', (socket) => {
     broadcastRoom(room);
     if (typeof ack === 'function') ack({ ok: true, complete: result.complete });
     maybeStartLineup(room);
+  });
+
+  socket.on('host:play-again', (ack) => {
+    const room = findRoomByPlayer(socket.id);
+    if (!room) {
+      if (typeof ack === 'function') ack({ ok: false, error: 'Not in a room' });
+      return;
+    }
+    if (room.hostId !== getPlayerToken(room, socket.id)) {
+      if (typeof ack === 'function') ack({ ok: false, error: 'Only the host can restart' });
+      return;
+    }
+    if (room.phase !== 'results') {
+      if (typeof ack === 'function') ack({ ok: false, error: 'Can only play again after race results' });
+      return;
+    }
+    stopRace(room);
+    resetRoomForPlayAgain(room);
+    setRoomPhase(room, 'lobby');
+    io.to(room.code).emit('room:phase', { phase: 'lobby', trackIndex: 0 });
+    broadcastRoom(room);
+    if (typeof ack === 'function') ack({ ok: true });
+  });
+
+  socket.on('room:leave', (ack) => {
+    const room = findRoomByPlayer(socket.id);
+    if (!room) {
+      if (typeof ack === 'function') ack({ ok: true });
+      return;
+    }
+    const code = room.code;
+    leaveRoom(socket.id);
+    socket.leave(code);
+    delete socket.data.roomCode;
+    if (typeof ack === 'function') ack({ ok: true });
   });
 
   socket.on('host:start-next-training', (ack) => {
@@ -320,6 +392,20 @@ io.on('connection', (socket) => {
   });
 });
 
-server.listen(PORT, () => {
-  console.log(`Purrfect Circuit server running at http://localhost:${PORT}`);
+function logListenUrls(port) {
+  console.log(`Purrfect Circuit server running at http://localhost:${port}`);
+  const nets = os.networkInterfaces();
+  for (const name of Object.keys(nets)) {
+    for (const net of nets[name] || []) {
+      if (net.family === 'IPv4' && !net.internal) {
+        console.log(`  Friends on your network: http://${net.address}:${port}`);
+      }
+    }
+  }
+  console.log('Share that URL + your room code so friends can join.');
+}
+
+const HOST = process.env.HOST || '0.0.0.0';
+server.listen(PORT, HOST, () => {
+  logListenUrls(PORT);
 });

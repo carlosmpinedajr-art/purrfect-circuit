@@ -37,6 +37,7 @@ function createPlayer(socketId, isHost = false) {
     stats: getStartingStatsForRacer(racerId),
     raceSkill: null,
     learnedSkills: [],
+    campaignPoints: 0,
     connected: true,
     _statDoneThisTurn: false,
     _bonusDoneThisTurn: false
@@ -70,6 +71,7 @@ function serializeRoom(room) {
       stats: { ...p.stats },
       raceSkill: p.raceSkill || null,
       learnedSkills: [...(p.learnedSkills || [])],
+      campaignPoints: p.campaignPoints || 0,
       connected: p.connected
     }))
   };

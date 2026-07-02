@@ -32,10 +32,23 @@ function getAvailableSkillIds(learnedSkillIds = []) {
   return VALID_SKILL_IDS.filter((id) => !learned.has(id));
 }
 
+const SKILL_CHOICE_COUNT = 2;
+
 function pickRandomRaceSkill(learnedSkillIds = []) {
   const pool = getAvailableSkillIds(learnedSkillIds);
   if (!pool.length) return null;
   return pool[Math.floor(Math.random() * pool.length)];
+}
+
+function pickRandomRaceSkillChoices(learnedSkillIds = [], count = SKILL_CHOICE_COUNT) {
+  const pool = [...getAvailableSkillIds(learnedSkillIds)];
+  const choices = [];
+  const pickCount = Math.min(count, pool.length);
+  while (choices.length < pickCount && pool.length) {
+    const idx = Math.floor(Math.random() * pool.length);
+    choices.push(pool.splice(idx, 1)[0]);
+  }
+  return choices;
 }
 
 function recordLearnedSkill(learnedSkillIds, skillId) {
@@ -70,7 +83,12 @@ function getRacerPlace(racer, racers) {
 
 function getPhotoFinishBoost(racer, racers) {
   const place = getRacerPlace(racer, racers);
-  return place > 1 ? PHOTO_FINISH_CATCHUP_SPEED : PHOTO_FINISH_SPEED;
+  const raw = place > 1 ? PHOTO_FINISH_CATCHUP_SPEED : PHOTO_FINISH_SPEED;
+  if (typeof scaleSkillSpeedBoost === 'function') return scaleSkillSpeedBoost(raw);
+  if (typeof module !== 'undefined' && module.exports) {
+    return require('./racer-stats').scaleSkillSpeedBoost(raw);
+  }
+  return raw;
 }
 
 if (typeof module !== 'undefined' && module.exports) {
@@ -80,8 +98,10 @@ if (typeof module !== 'undefined' && module.exports) {
     PHOTO_FINISH_PROGRESS,
     PHOTO_FINISH_SPEED,
     PHOTO_FINISH_CATCHUP_SPEED,
+    SKILL_CHOICE_COUNT,
     getAvailableSkillIds,
     pickRandomRaceSkill,
+    pickRandomRaceSkillChoices,
     recordLearnedSkill,
     syncPrimaryRaceSkill,
     getRacerLearnedSkills,

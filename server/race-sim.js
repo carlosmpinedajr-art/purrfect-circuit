@@ -18,18 +18,18 @@ const HURDLE_JUMP_LEAD = 24;
 const HURDLE_CLEAR_TRAIL = 8;
 const HURDLE_JUMP_DURATION = 0.5;
 const HURDLE_JUMP_MIN_HALF = 18;
-const HURDLE_SPEED_MULTIPLIER = 0.5;
-const HURDLE_RECOVERY_BASE_SEC = 3;
 const CPU_STAT_MIN = 1;
 const CPU_RACE_STAT_TOTAL = 100;
 const CPU_MIN_SPEED_STAT = 35;
-const CPU_MIN_RACE_SPEED = 5;
-const PACE_VARIANCE_MAX = 0.10;
-const PACE_VARIANCE_MIN = 0.04;
-const PACE_FLOOR_MIN = 0.95;
-const PACE_FLOOR_MAX = 0.98;
-const PACE_FOCUS_BASE = 5;
-const PACE_FOCUS_SCALE = 15;
+const {
+  getFocusPaceTuning,
+  getHurdleRecoveryDuration,
+  getHurdleSpeedMultiplier,
+  getAgilityHurdleEffectiveness,
+  CPU_MIN_RACE_SPEED,
+  calcBaseSpeed,
+  scaleSkillSpeedBoost
+} = require('../racer-stats');
 
 const DEFAULT_CPU_RUNNERS = [
   { name: 'Kitty Litter' },
@@ -122,18 +122,6 @@ function getLapProgress(position) {
   return (position % LAP_LENGTH) / LAP_LENGTH;
 }
 
-function calcBaseSpeed(racer) {
-  return racer.stats.speed * 2.5;
-}
-
-function getFocusPaceTuning(focus) {
-  const t = Math.min(1, Math.max(0, ((focus ?? PACE_FOCUS_BASE) - PACE_FOCUS_BASE) / PACE_FOCUS_SCALE));
-  return {
-    floor: PACE_FLOOR_MIN + t * (PACE_FLOOR_MAX - PACE_FLOOR_MIN),
-    variance: PACE_VARIANCE_MAX - t * (PACE_VARIANCE_MAX - PACE_VARIANCE_MIN)
-  };
-}
-
 function getPaceVarianceMultiplier(racer, rng) {
   const tuning = getFocusPaceTuning(racer.stats?.focus);
   return tuning.floor + rng.next() * tuning.variance;
@@ -221,7 +209,6 @@ function createRacerState(entry) {
     skillTriggers: {},
     finished: false,
     finishTime: null,
-    passingCooldown: 0,
     animOffset: entry.animOffset || 0,
     hurdlesCleared: createHurdlesClearedState(),
     hurdleJumpTriggered: createHurdleJumpTriggeredState(),
@@ -232,17 +219,14 @@ function createRacerState(entry) {
     hurdleRecovering: false,
     hurdleRecoveryTimer: 0,
     hurdleRecoveryDuration: 0,
-    hurdleRecoveryTarget: 0
+    hurdleRecoveryTarget: 0,
+    hurdlePenaltyMult: getHurdleSpeedMultiplier(entry.stats?.agility),
+    paceMultiplier: 1
   };
   if (!state.playerId) {
     state.currentSpeed = Math.max(state.currentSpeed, CPU_MIN_RACE_SPEED);
   }
   return state;
-}
-
-function getHurdleRecoveryDuration(agility) {
-  const recoveryRate = 1 + (agility / 10) * 0.1;
-  return HURDLE_RECOVERY_BASE_SEC / recoveryRate;
 }
 
 function getEffectiveStamina(racer) {
@@ -277,17 +261,19 @@ function applyRaceSkills(racer, events, allRacers) {
 
   if (hasSkill('midraceSurge') && !racer.skillTriggers.midraceSurge && progress >= 0.5) {
     racer.skillTriggers.midraceSurge = true;
-    racer.currentSpeed += 20;
+    const surge = scaleSkillSpeedBoost(20);
+    racer.currentSpeed += surge;
     if (racer.playerId) {
-      pushEvent(events, racer, 'Midrace Surge! +20 Speed!');
+      pushEvent(events, racer, `Midrace Surge! +${surge} Speed!`);
     }
   }
 
   if (hasSkill('finalKick') && !racer.skillTriggers.finalKick && progress >= 0.75) {
     racer.skillTriggers.finalKick = true;
-    racer.currentSpeed += 30;
+    const kick = scaleSkillSpeedBoost(30);
+    racer.currentSpeed += kick;
     if (racer.playerId) {
-      pushEvent(events, racer, 'Final Kick! +30 Speed!');
+      pushEvent(events, racer, `Final Kick! +${kick} Speed!`);
     }
   }
 
@@ -296,10 +282,11 @@ function applyRaceSkills(racer, events, allRacers) {
     const boost = getPhotoFinishBoost(racer, allRacers || [racer]);
     racer.currentSpeed += boost;
     if (racer.playerId) {
+      const leaderBoost = scaleSkillSpeedBoost(PHOTO_FINISH_SPEED);
       pushEvent(
         events,
         racer,
-        boost > 25 ? `Photo Finish! +${boost} Speed — closing the gap!` : `Photo Finish! +${boost} Speed!`
+        boost > leaderBoost ? `Photo Finish! +${boost} Speed — closing the gap!` : `Photo Finish! +${boost} Speed!`
       );
     }
   }
@@ -315,7 +302,8 @@ function updateHurdleForRacer(racer, dt, events) {
   if (racer.hurdleRecovering) {
     racer.hurdleRecoveryTimer += dt;
     const t = Math.min(1, racer.hurdleRecoveryTimer / racer.hurdleRecoveryDuration);
-    racer.currentSpeed = racer.hurdleRecoveryTarget * (HURDLE_SPEED_MULTIPLIER + (1 - HURDLE_SPEED_MULTIPLIER) * t);
+    const penaltyMult = racer.hurdlePenaltyMult ?? getHurdleSpeedMultiplier(racer.stats?.agility);
+    racer.currentSpeed = racer.hurdleRecoveryTarget * (penaltyMult + (1 - penaltyMult) * t);
     if (t >= 1) {
       racer.hurdleRecovering = false;
       racer.currentSpeed = racer.hurdleRecoveryTarget;
@@ -343,14 +331,19 @@ function updateHurdleForRacer(racer, dt, events) {
     if (!racer.hurdlesCleared[i] && racer.position >= zone.clearPos) {
       racer.hurdlesCleared[i] = true;
       racer.hurdleRecoveryTarget = racer.currentSpeed;
-      racer.currentSpeed = racer.hurdleRecoveryTarget * HURDLE_SPEED_MULTIPLIER;
+      racer.hurdlePenaltyMult = getHurdleSpeedMultiplier(racer.stats.agility);
+      racer.currentSpeed = racer.hurdleRecoveryTarget * racer.hurdlePenaltyMult;
       racer.hurdleRecovering = true;
       racer.hurdleRecoveryTimer = 0;
       racer.hurdleRecoveryDuration = getHurdleRecoveryDuration(racer.stats.agility);
 
       if (racer.playerId) {
-        const secs = racer.hurdleRecoveryDuration.toFixed(1);
-        pushEvent(events, racer, `Hurdle ${i + 1} cleared! -50% speed, recovering in ${secs}s`);
+        const agiFx = getAgilityHurdleEffectiveness(racer.stats.agility);
+        pushEvent(
+          events,
+          racer,
+          `Hurdle ${i + 1} cleared! -${agiFx.penaltyPct}% speed, recovering in ${agiFx.recoverySec}s`
+        );
       }
     }
   }
@@ -393,6 +386,7 @@ function serializeRacerTick(racer) {
     finished: racer.finished,
     finishTime: racer.finishTime,
     currentSpeed: racer.currentSpeed,
+    paceMultiplier: racer.paceMultiplier ?? 1,
     staminaPenalty: racer.staminaPenalty,
     jumping: racer.jumping,
     jumpTimer: racer.jumpTimer,
@@ -442,30 +436,9 @@ function raceTick(race, dt) {
     let speed = racer.currentSpeed;
     if (racer.staminaPenalty) speed *= STAMINA_PENALTY_SPEED_MULT;
 
-    if (racer.passingCooldown > 0) {
-      racer.passingCooldown -= dt;
-    }
-
-    const ahead = race.racers
-      .filter((r) => !r.finished && r.position > racer.position && r.position - racer.position < 30)
-      .sort((a, b) => a.position - b.position)[0];
-
-    if (ahead && racer.passingCooldown <= 0) {
-      const passChance = racer.stats.agility / (racer.stats.agility + ahead.stats.agility + 5);
-      if (race.rng.next() < passChance * dt * 0.5) {
-        const boost = 15 + racer.stats.agility * 2;
-        racer.position = Math.min(racer.position + boost, ahead.position + 5);
-        racer.passingCooldown = 2;
-        if (racer.playerId) {
-          pushEvent(events, racer, `Passed ${ahead.name}!`);
-        }
-        if (ahead.playerId) {
-          pushEvent(events, ahead, `${racer.name} passed you!`, ahead.playerId);
-        }
-      }
-    }
-
-    speed *= getPaceVarianceMultiplier(racer, race.rng);
+    const paceMult = getPaceVarianceMultiplier(racer, race.rng);
+    racer.paceMultiplier = paceMult;
+    speed *= paceMult;
     if (!racer.playerId) {
       speed = Math.max(speed, CPU_MIN_RACE_SPEED);
     }

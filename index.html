@@ -189,6 +189,12 @@
       color: #ffb3d9;
       animation: splash-blink 1.1s step-end infinite;
     }
+    .splash-online-status {
+      font-size: clamp(6px, 1vw, 7px);
+      color: #7fd7ff;
+      margin-top: 8px;
+      min-height: 1.4em;
+    }
     .splash-volume-control {
       position: absolute;
       top: clamp(10px, 2vh, 16px);
@@ -325,6 +331,14 @@
     #lobby-ready-btn.ready-active {
       background: #7fd7ff;
       color: #1a0a2e;
+    }
+    .lobby-invite {
+      font-size: clamp(6px, 1.1vw, 8px);
+      color: #7fd7ff;
+      line-height: 1.7;
+      margin: 10px auto 14px;
+      max-width: 520px;
+      word-break: break-all;
     }
     .lobby-status {
       font-size: clamp(7px, 1.2vw, 9px);
@@ -697,6 +711,17 @@
       border: 2px solid #7fd7ff;
       line-height: 1.8;
     }
+    .focus-effectiveness,
+    .agility-effectiveness {
+      font-size: 7px;
+      color: #ffd700;
+      margin-top: 8px;
+      line-height: 1.7;
+      text-align: left;
+    }
+    .agility-effectiveness {
+      color: #7fd7ff;
+    }
 
     /* Training modal */
     #training-modal {
@@ -770,11 +795,23 @@
       cursor: pointer;
       text-transform: uppercase;
     }
+    .race-top-section {
+      flex-shrink: 0;
+      background: #1a0a2e;
+      border-bottom: 3px solid #7fd7ff;
+    }
+    .race-controls-bar {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px 2px;
+    }
     .race-skip-btn {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      z-index: 20;
+      position: static;
+      justify-self: end;
+      grid-column: 2;
+      grid-row: 1;
     }
     .race-skip-btn:hover,
     .race-speed-btn:hover {
@@ -782,12 +819,12 @@
       border-color: #ffd700;
     }
     .race-speed-controls {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      z-index: 20;
+      position: static;
       display: flex;
       gap: 6px;
+      justify-self: start;
+      grid-column: 1;
+      grid-row: 1;
     }
     .race-speed-btn {
       min-width: 42px;
@@ -797,6 +834,59 @@
       background: #ff6eb4;
       border-color: #ffd700;
       color: #fff;
+    }
+    .race-progress-wrap {
+      padding: 0 clamp(12px, 2vw, 18px) clamp(4px, 0.6vh, 8px);
+    }
+    .race-progress-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: clamp(6px, 1vw, 8px);
+      color: #7fd7ff;
+      margin-bottom: 5px;
+      letter-spacing: 0.04em;
+    }
+    .race-progress-track {
+      position: relative;
+      height: 20px;
+      background: linear-gradient(180deg, #3a2a5e 0%, #2d1b4e 100%);
+      border: 2px solid #ffd700;
+      box-shadow: inset 0 0 0 1px rgba(127, 215, 255, 0.25);
+    }
+    .race-progress-marker {
+      position: absolute;
+      top: 50%;
+      width: 10px;
+      height: 10px;
+      margin-left: -5px;
+      border-radius: 50%;
+      border: 2px solid #111;
+      transform: translateY(-50%);
+      z-index: 1;
+      pointer-events: none;
+    }
+    .race-progress-marker.player-marker {
+      width: 14px;
+      height: 14px;
+      margin-left: -7px;
+      border-color: #fff;
+      box-shadow: 0 0 8px #ffd700;
+      z-index: 10;
+    }
+    .race-progress-marker-label {
+      position: absolute;
+      left: 50%;
+      bottom: calc(100% + 3px);
+      transform: translateX(-50%);
+      font-size: 5px;
+      color: #fff;
+      white-space: nowrap;
+      text-shadow: 1px 1px 0 #111;
+      line-height: 1;
+    }
+    .race-progress-marker.player-marker .race-progress-marker-label {
+      color: #ffd700;
+      font-size: 6px;
     }
     #race-canvas {
       display: block;
@@ -921,10 +1011,16 @@
     }
     #results-screen h2 { font-size: clamp(12px, 2.5vw, 18px); margin-bottom: 16px; }
     #results-screen .result-text {
-      font-size: clamp(8px, 1.5vw, 11px);
-      line-height: 2;
-      margin-bottom: 24px;
+      font-size: clamp(8px, 1.4vw, 11px);
+      line-height: 1.8;
+      margin-bottom: 20px;
       color: #ffb3d9;
+    }
+    .results-points {
+      font-size: clamp(7px, 1.2vw, 9px);
+      color: #7fd7ff;
+      margin: 4px 0 8px;
+      line-height: 1.6;
     }
     #results-screen .results-buttons {
       display: flex;
@@ -1000,7 +1096,8 @@
           <button type="button" class="btn" id="splash-join-confirm" style="margin-top:10px;width:100%;">JOIN</button>
           <p class="join-error" id="join-error"></p>
         </div>
-        <p class="splash-prompt" id="splash-prompt">ONLINE: CREATE OR JOIN A ROOM</p>
+        <p class="splash-prompt" id="splash-prompt">ONLINE — CREATE OR JOIN A ROOM</p>
+        <p class="splash-online-status" id="splash-online-status"></p>
       </div>
 
       <!-- Setup -->
@@ -1045,8 +1142,8 @@
             <h3>STAT GUIDE</h3>
             <strong>SPEED</strong> — Top speed on the track<br>
             <span id="stamina-guide-line"><strong>STAMINA</strong> — Need 15+ at 75% of lap or -80% speed<br></span>
-            <strong>AGILITY</strong> — Passing runners &amp; hurdle speed recovery<br>
-            <strong>FOCUS</strong> — Steady pacing; less random speed wobble<br><br>
+            <strong>AGILITY</strong> — Hurdle recovery &amp; landing slowdown (5 = 3.0s / −50%, 150 = 0.8s / −25%)<br>
+            <strong>FOCUS</strong> — Steadies top speed each tick (5 = 60%–95% hold, 150 = 100%)<br><br>
             <strong>STAT CAP</strong> — Each stat maxes at 150<br><br>
             <strong>SKILLS</strong> — Learn multiple skills during training; carry over to the next track<br>
             <strong>RANDOM EVENTS</strong> — 80% chance each turn for bonus training (+2)
@@ -1060,11 +1157,13 @@
       <div id="lobby-screen" class="hidden">
         <h2>RACE LOBBY</h2>
         <p class="lobby-code">ROOM: <span id="lobby-room-code">------</span></p>
-        <p class="lobby-subtitle">Share the room code. Everyone clicks Ready, then the host starts training.</p>
+        <p class="lobby-subtitle">Share the link below. Everyone clicks Ready, then the host starts training.</p>
+        <p class="lobby-invite" id="lobby-invite"></p>
         <div class="lobby-grid" id="lobby-grid"></div>
         <div class="lobby-actions">
           <button class="btn" id="lobby-ready-btn">READY</button>
           <button class="btn hidden" id="lobby-start-btn">START TRAINING</button>
+          <button class="btn secondary" id="lobby-leave-btn">LEAVE LOBBY</button>
         </div>
         <p class="lobby-status" id="lobby-status">Waiting for racers...</p>
       </div>
@@ -1080,13 +1179,24 @@
 
       <!-- Race -->
       <div id="race-screen" class="hidden">
-        <div class="race-speed-controls hidden" id="race-speed-controls">
-          <button type="button" class="race-speed-btn active" id="race-speed-1x" data-speed="1">x1</button>
-          <button type="button" class="race-speed-btn" id="race-speed-2x" data-speed="2">x2</button>
-          <button type="button" class="race-speed-btn" id="race-speed-4x" data-speed="4">x4</button>
+        <div class="race-top-section" id="race-top-section">
+          <div class="race-controls-bar">
+            <div class="race-speed-controls hidden" id="race-speed-controls">
+              <button type="button" class="race-speed-btn active" id="race-speed-1x" data-speed="1">x1</button>
+              <button type="button" class="race-speed-btn" id="race-speed-2x" data-speed="2">x2</button>
+              <button type="button" class="race-speed-btn" id="race-speed-4x" data-speed="4">x4</button>
+            </div>
+            <button type="button" class="race-skip-btn hidden" id="race-skip-btn">SKIP</button>
+            <button type="button" class="race-skip-btn hidden" id="replay-skip-btn">SKIP</button>
+          </div>
+          <div class="race-progress-wrap" id="race-progress-wrap">
+            <div class="race-progress-labels">
+              <span>START</span>
+              <span>FINISH</span>
+            </div>
+            <div class="race-progress-track" id="race-progress-track"></div>
+          </div>
         </div>
-        <button type="button" class="race-skip-btn hidden" id="race-skip-btn">SKIP</button>
-        <button type="button" class="race-skip-btn hidden" id="replay-skip-btn">SKIP</button>
         <canvas id="race-canvas"></canvas>
         <div class="race-hud">
           <div class="position" id="race-position">POSITION: --</div>
@@ -1144,7 +1254,9 @@
   <script src="cpu-stats.js"></script>
   <script src="racer-stats.js"></script>
   <script src="tracks.js"></script>
+  <script src="scoring.js"></script>
   <script src="race-skills.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
   <script>
     const IS_OFFLINE_FILE_MODE = location.protocol === 'file:';
     const STAT_NAMES = ['speed', 'stamina', 'agility', 'focus'];
@@ -1226,7 +1338,6 @@
     const TRAINING_MODAL_MS = 2600;
     const TRAINING_ANIM_KEY = 'purrfectCircuitTrainingAnim';
     const MAX_TURNS = 10;
-    const SKILL_TURN = 6;
 
     const BONUS_SCENARIOS = [
       'A stray sunbeam hits the track just as you arrive for practice. Your coach left a note on your locker: "Today is your day, Nya-Runner." You stretch once and feel every muscle wake up ready to run.',
@@ -1248,12 +1359,6 @@
     const STAMINA_CHECK_POINT = 0.75;
     const STAMINA_PENALTY_SPEED_MULT = 0.2;
     const RACE_SPEED_TO_MPH = 0.32;
-    const PACE_VARIANCE_MAX = 0.10;
-    const PACE_VARIANCE_MIN = 0.04;
-    const PACE_FLOOR_MIN = 0.95;
-    const PACE_FLOOR_MAX = 0.98;
-    const PACE_FOCUS_BASE = 5;
-    const PACE_FOCUS_SCALE = 15;
     const HURDLE_PROGRESSES = [0.15, 0.60];
     const HURDLE_JUMP_LEAD = 24;
     const HURDLE_CLEAR_TRAIL = 8;
@@ -1263,8 +1368,7 @@
     const HURDLE_JUMP_LIFT = 0.5;
     const HURDLE_WIDTH_SCALE = 1;
     const HURDLE_HEIGHT_SCALE = 0.72;
-    const HURDLE_SPEED_MULTIPLIER = 0.5;
-    const HURDLE_RECOVERY_BASE_SEC = 3;
+    // Hurdle landing slowdown & recovery scale with Agility (see racer-stats.js)
     const HURDLE_SPRITE = {
       sx: 0, sy: 0, sw: 120, sh: 800,
       feetX: 60, feetY: 800
@@ -1566,6 +1670,8 @@
     RACER_CHOICES[2].jumpFrames = FRAME_DATA_SUNNY_JUMP;
 
     let selectedRacerId = 'purple';
+    let onlineServerReadyPromise = null;
+
     const multiplayer = {
       mode: 'solo',
       socket: null,
@@ -1712,7 +1818,12 @@
         raceRunning: false,
         raceFinished: false,
         serverRace: false,
-        eventLog: []
+        eventLog: [],
+        skillChoices: [],
+        skillPickPending: false,
+        skillPickSource: null,
+        campaignPoints: {},
+        lastRacePoints: {}
       };
     }
 
@@ -1833,7 +1944,7 @@
     function ensureMultiplayerSocket() {
       if (multiplayer.socket) return multiplayer.socket;
       if (typeof io === 'undefined') return null;
-      const socket = io();
+      const socket = io(getSocketOptions());
       multiplayer.socket = socket;
       socket.on('connect', () => {
         multiplayer.connected = true;
@@ -1862,6 +1973,17 @@
       });
       socket.on('room:phase', ({ phase, trackIndex }) => {
         if (trackIndex != null) gameState.trackIndex = trackIndex;
+        if (phase === 'lobby' && (gameState.phase === 'results' || gameState.phase === 'training' || gameState.phase === 'lineup')) {
+          gameState.serverRace = false;
+          gameState.raceRunning = false;
+          gameState.raceFinished = false;
+          multiplayer.localReady = false;
+          syncLocalPlayerFromRoom();
+          gameState.phase = 'lobby';
+          showScreen('lobby-screen');
+          renderLobby();
+          return;
+        }
         if (phase === 'training' && gameState.phase === 'results') {
           syncLocalPlayerFromRoom();
           enterTrainingScreen();
@@ -1887,19 +2009,118 @@
       socket.on('race:finished', (data) => {
         if (gameState.serverRace) {
           handleMultiplayerRaceFinished(data);
+          gameState.raceRunning = false;
+          gameState.raceFinished = true;
+          gameState.resultsDelay = 0;
+          setRaceSkipVisible(false);
+          setRaceSpeedControlsVisible(false);
+          if (gameState.phase === 'race') showResults();
         }
       });
       return socket;
     }
 
-    function requireOnlineServer() {
+    function isRenderHost() {
+      return /onrender\.com$/i.test(location.hostname);
+    }
+
+    function getOnlineConnectTimeoutMs() {
+      return isRenderHost() ? 90000 : 12000;
+    }
+
+    function getSocketOptions() {
+      return {
+        transports: ['websocket', 'polling'],
+        reconnection: true,
+        reconnectionAttempts: 12,
+        timeout: 20000
+      };
+    }
+
+    function setOnlineStatus(message, isError = false) {
+      const el = document.getElementById('splash-online-status');
+      if (!el || IS_OFFLINE_FILE_MODE) return;
+      el.textContent = message || '';
+      el.style.color = isError ? '#ff6eb4' : '#7fd7ff';
+    }
+
+    function waitForOnlineServer(maxMs = getOnlineConnectTimeoutMs()) {
+      if (IS_OFFLINE_FILE_MODE) return Promise.resolve(false);
+      if (!onlineServerReadyPromise) {
+        onlineServerReadyPromise = new Promise((resolve) => {
+          const started = Date.now();
+          const finish = (ok) => {
+            if (ok) setOnlineStatus('SERVER CONNECTED');
+            else if (isRenderHost()) {
+              setOnlineStatus('SERVER SLEEPING — refresh and wait ~30s, then try again', true);
+            } else {
+              setOnlineStatus('SERVER OFFLINE — run Play Online.bat', true);
+            }
+            resolve(ok);
+          };
+          const attempt = () => {
+            loadOnlineSocketScript().finally(() => {
+              if (typeof io === 'undefined') {
+                if (Date.now() - started >= maxMs) finish(false);
+                else setTimeout(attempt, 250);
+                return;
+              }
+              const socket = ensureMultiplayerSocket();
+              if (!socket) {
+                if (Date.now() - started >= maxMs) finish(false);
+                else setTimeout(attempt, 250);
+                return;
+              }
+              if (socket.connected) {
+                finish(true);
+                return;
+              }
+              setOnlineStatus(isRenderHost()
+                ? 'WAKING SERVER (free tier may take ~30s)...'
+                : 'CONNECTING TO SERVER...');
+              const onConnect = () => {
+                socket.off('connect_error', onError);
+                finish(true);
+              };
+              const onError = () => {
+                if (Date.now() - started >= maxMs) {
+                  socket.off('connect', onConnect);
+                  finish(false);
+                }
+              };
+              socket.once('connect', onConnect);
+              socket.once('connect_error', onError);
+              setTimeout(() => {
+                if (!socket.connected && Date.now() - started >= maxMs) {
+                  socket.off('connect', onConnect);
+                  socket.off('connect_error', onError);
+                  finish(false);
+                }
+              }, maxMs);
+            });
+          };
+          attempt();
+        });
+      }
+      return onlineServerReadyPromise;
+    }
+
+    async function requireOnlineServer() {
       if (IS_OFFLINE_FILE_MODE) {
-        setJoinError('Multiplayer needs npm start — use SOLO PLAY offline.');
+        setJoinError('Multiplayer needs Play Online.bat (not index.html).');
         return false;
       }
-      if (ensureMultiplayerSocket()) return true;
-      setJoinError('Run npm start — online play needs the server.');
-      return false;
+      setJoinError('Connecting...');
+      const ok = await waitForOnlineServer();
+      if (!ok) {
+        onlineServerReadyPromise = null;
+        setJoinError(isRenderHost()
+          ? 'Server still waking up — wait ~30s, refresh, then try again.'
+          : 'Server not running. Double-click Play Online.bat in the game folder.');
+        return false;
+      }
+      setJoinError('');
+      return true;
     }
 
     function loadOnlineSocketScript() {
@@ -1911,6 +2132,14 @@
         script.onerror = () => resolve(false);
         document.head.appendChild(script);
       });
+    }
+
+    function applyOnlineModeUI() {
+      if (IS_OFFLINE_FILE_MODE) return;
+      const prompt = document.getElementById('splash-prompt');
+      if (prompt) prompt.textContent = 'ONLINE — CREATE OR JOIN A ROOM';
+      setOnlineStatus('CONNECTING TO SERVER...');
+      waitForOnlineServer();
     }
 
     function applyOfflineFileModeUI() {
@@ -1928,11 +2157,11 @@
         soloBtn.classList.remove('secondary');
         soloBtn.textContent = 'START SOLO';
       }
-      if (prompt) prompt.textContent = 'OFFLINE MODE — DOUBLE-CLICK index.html TO PLAY';
+      if (prompt) prompt.textContent = 'OFFLINE — SOLO ONLY (use Play Online.bat for multiplayer)';
     }
 
-    function createMultiplayerRoom() {
-      if (!requireOnlineServer()) return;
+    async function createMultiplayerRoom() {
+      if (!(await requireOnlineServer())) return;
       multiplayer.socket.emit('room:create', (res) => {
         if (!res?.ok) {
           setJoinError(res?.error || 'Could not create room');
@@ -1944,12 +2173,16 @@
         multiplayer.localReady = false;
         saveMultiplayerSession(res.code, res.playerId);
         setJoinError('');
+        const prompt = document.getElementById('splash-prompt');
+        if (prompt) {
+          prompt.textContent = `ROOM ${res.code} — share ${getMultiplayerInviteUrl()} with friends`;
+        }
         goToSetup();
       });
     }
 
-    function joinMultiplayerRoom(code) {
-      if (!requireOnlineServer()) return;
+    async function joinMultiplayerRoom(code) {
+      if (!(await requireOnlineServer())) return;
       const clean = (code || '').trim().toUpperCase();
       if (clean.length !== 6) {
         setJoinError('Enter a 6-character room code');
@@ -1981,11 +2214,23 @@
       return players.length > 0 && players.every((p) => p.connected && p.ready && p.name);
     }
 
+    function getMultiplayerInviteUrl() {
+      if (IS_OFFLINE_FILE_MODE) return '';
+      return location.origin;
+    }
+
     function renderLobby() {
       const room = multiplayer.room;
       if (!room) return;
 
       document.getElementById('lobby-room-code').textContent = room.code || '------';
+      const inviteEl = document.getElementById('lobby-invite');
+      if (inviteEl) {
+        const base = getMultiplayerInviteUrl();
+        inviteEl.textContent = base
+          ? `INVITE: ${base}  |  ROOM CODE: ${room.code || '------'}`
+          : `ROOM CODE: ${room.code || '------'}`;
+      }
 
       const grid = document.getElementById('lobby-grid');
       grid.innerHTML = '';
@@ -2067,6 +2312,33 @@
           if (status) status.textContent = res?.error || 'Could not start training';
         }
       });
+    }
+
+    function leaveMultiplayerLobby() {
+      if (!multiplayer.socket) {
+        returnToSplashAfterLeave();
+        return;
+      }
+      multiplayer.socket.emit('room:leave', () => {
+        returnToSplashAfterLeave();
+      });
+    }
+
+    function returnToSplashAfterLeave() {
+      clearMultiplayerSession();
+      multiplayer.mode = 'solo';
+      multiplayer.room = null;
+      multiplayer.playerId = null;
+      multiplayer.localReady = false;
+      multiplayer.reconnectAttempted = false;
+      gameState.serverRace = false;
+      gameState.phase = 'splash';
+      showScreen('splash-screen');
+      const prompt = document.getElementById('splash-prompt');
+      if (prompt && !IS_OFFLINE_FILE_MODE) {
+        prompt.textContent = 'ONLINE — CREATE OR JOIN A ROOM';
+      }
+      playTitleBgm();
     }
 
     function isMultiplayer() {
@@ -2187,6 +2459,7 @@
           lane: sr.lane,
           position: sr.position,
           currentSpeed: sr.currentSpeed,
+          paceMultiplier: sr.paceMultiplier ?? prev?.paceMultiplier ?? 1,
           finished: sr.finished,
           finishTime: sr.finishTime,
           staminaPenalty: sr.staminaPenalty,
@@ -2201,7 +2474,6 @@
           skillTriggers: prev?.skillTriggers || {},
           staminaDrain: prev?.staminaDrain || 0,
           staminaChecked: prev?.staminaChecked || false,
-          passingCooldown: prev?.passingCooldown || 0,
           postJumpSettle: (prev?.jumping && !sr.jumping)
             ? POST_JUMP_SETTLE_DURATION
             : Math.max(0, prev?.postJumpSettle || 0)
@@ -2327,6 +2599,15 @@
             racer.finished = true;
             racer.name = s.name || racer.name;
           }
+        });
+      }
+      if (data?.racePointsById) {
+        gameState.lastRacePoints = { ...data.racePointsById };
+      }
+      if (data?.campaignTotals?.length && multiplayer.room?.players) {
+        data.campaignTotals.forEach((entry) => {
+          const p = multiplayer.room.players.find((pl) => pl.id === entry.playerId);
+          if (p) p.campaignPoints = entry.campaignPoints;
         });
       }
       finalizeReplayRecording();
@@ -3833,9 +4114,11 @@
 
     const TRACK_LAYOUT = {
       lanes: RACE_LANE_COUNT,
-      laneStripScreenFrac: 0.38,
+      laneStripScreenFrac: 0.50,
       bgCropFrac: 0.65,
-      scrollTilesPerLap: 0,
+      scrollTilesPerLap: 4,
+      cameraAnchorX: 0.36,
+      bgParallaxFactor: 0.28,
       startX: 0.10,
       finishX: 0.88
     };
@@ -3933,12 +4216,34 @@
       trackDrawRect = { dx: 0, dy, dw, dh, tileW: dw };
     }
 
-    function getTrackScrollPx(lapProgress) {
-      const tileW = trackDrawRect.tileW || trackDrawRect.dw;
-      return lapProgress * tileW * TRACK_LAYOUT.scrollTilesPerLap;
+    function getWorldLengthPx() {
+      const tileW = trackDrawRect.tileW || trackDrawRect.dw || 1;
+      return tileW * TRACK_LAYOUT.scrollTilesPerLap * TOTAL_LAPS;
     }
 
-    function drawTrackBackground(ctx, W, H) {
+    function getCameraAnchorPx(W) {
+      return W * TRACK_LAYOUT.cameraAnchorX;
+    }
+
+    function positionToWorldX(position, W) {
+      const anchor = getCameraAnchorPx(W);
+      const worldLen = getWorldLengthPx();
+      return anchor + getRaceProgress(position) * worldLen;
+    }
+
+    function getCameraScrollPx(focusPosition, W) {
+      const anchor = getCameraAnchorPx(W);
+      const focusWorldX = positionToWorldX(focusPosition, W);
+      const finishWorldX = positionToWorldX(RACE_LENGTH, W);
+      const maxScroll = Math.max(0, finishWorldX + anchor * 0.55 - W);
+      return Math.min(Math.max(0, focusWorldX - anchor), maxScroll);
+    }
+
+    function worldToScreenX(worldX, scrollPx) {
+      return worldX - scrollPx;
+    }
+
+    function drawTrackBackground(ctx, W, H, scrollPx = 0) {
       const laneTop = trackDrawRect.dy;
       ctx.fillStyle = '#5eb5e8';
       ctx.fillRect(0, 0, W, laneTop);
@@ -3946,12 +4251,19 @@
       if (!trackBgImage) return;
 
       const cropH = Math.floor(trackBgImage.height * TRACK_LAYOUT.bgCropFrac);
+      const parallax = scrollPx * (TRACK_LAYOUT.bgParallaxFactor || 0.28);
+      const tileW = W;
+      const offset = parallax % tileW;
       ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(
-        trackBgImage,
-        0, 0, trackBgImage.width, cropH,
-        0, 0, W, laneTop
-      );
+      let x = -offset;
+      while (x < W + tileW) {
+        ctx.drawImage(
+          trackBgImage,
+          0, 0, trackBgImage.width, cropH,
+          x, 0, tileW, laneTop
+        );
+        x += tileW;
+      }
     }
 
     function drawScrollingTrack(ctx, scrollPx, W) {
@@ -3975,15 +4287,14 @@
       return Math.min(1, position / RACE_LENGTH);
     }
 
-    function getProgressScreenX(progress, W) {
-      const startX = W * TRACK_LAYOUT.startX;
-      const finishX = W * TRACK_LAYOUT.finishX;
-      return startX + progress * (finishX - startX);
+    function getProgressScreenX(progress, W, scrollPx = 0) {
+      const position = progress * RACE_LENGTH;
+      return worldToScreenX(positionToWorldX(position, W), scrollPx);
     }
 
-    function getRacerScreenPoint(racer, W) {
-      const progress = getRaceProgress(racer.position);
-      const x = getProgressScreenX(progress, W);
+    function getRacerScreenPoint(racer, W, scrollPx = 0) {
+      const worldX = positionToWorldX(racer.position, W);
+      const x = worldToScreenX(worldX, scrollPx);
       return { x, y: getLaneGroundY(racer.lane), tangent: 0 };
     }
 
@@ -4015,11 +4326,11 @@
     function getRunnerSpriteHeight() {
       const dh = trackDrawRect.dh || 120;
       const laneSpacing = dh * getLaneSpacingNorm();
-      // ~120% of lane center spacing fills the visible lane band on the track art.
-      return Math.max(36, Math.floor(laneSpacing * 1.2));
+      // Scale runners to fill the lane band on the track art.
+      return Math.max(48, Math.floor(laneSpacing * 1.5));
     }
 
-    function drawHurdles(ctx, W, spriteH) {
+    function drawHurdles(ctx, W, spriteH, scrollPx = 0) {
       const { sx, sy, sw, sh, feetX, feetY } = hurdleSpriteMeta || HURDLE_SPRITE;
       const displayH = spriteH * HURDLE_HEIGHT_SCALE;
       const footOffsetX = feetX - sx;
@@ -4030,7 +4341,9 @@
       ctx.imageSmoothingEnabled = false;
 
       HURDLE_PROGRESSES.forEach((progress) => {
-        const x = Math.floor(getProgressScreenX(progress, W));
+        const hurdlePos = LAP_LENGTH * progress;
+        const x = Math.floor(worldToScreenX(positionToWorldX(hurdlePos, W), scrollPx));
+        if (x < -displayW * 2 || x > W + displayW * 2) return;
         for (let lane = 0; lane < TRACK_LAYOUT.lanes; lane++) {
           const groundY = Math.floor(getLaneGroundY(lane));
 
@@ -4050,8 +4363,23 @@
       });
     }
 
-    function drawFinishLine(ctx, W) {
-      const x = Math.floor(W * TRACK_LAYOUT.finishX);
+    function drawStartLine(ctx, W, scrollPx = 0) {
+      const x = Math.floor(worldToScreenX(positionToWorldX(0, W), scrollPx));
+      if (x < -24 || x > W + 24) return;
+      const top = getLaneGroundY(0) - trackDrawRect.dh * 0.10;
+      const bot = getLaneGroundY(TRACK_LAYOUT.lanes - 1) + trackDrawRect.dh * 0.03;
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(x - 2, top, 4, bot - top);
+      ctx.fillStyle = '#7fd7ff';
+      ctx.font = '5px "Press Start 2P"';
+      ctx.textAlign = 'center';
+      ctx.fillText('START', x, top - 6);
+      ctx.textAlign = 'left';
+    }
+
+    function drawFinishLine(ctx, W, scrollPx = 0) {
+      const x = Math.floor(worldToScreenX(positionToWorldX(RACE_LENGTH, W), scrollPx));
+      if (x < -24 || x > W + 24) return;
       const top = getLaneGroundY(0) - trackDrawRect.dh * 0.10;
       const bot = getLaneGroundY(TRACK_LAYOUT.lanes - 1) + trackDrawRect.dh * 0.03;
       const size = 8;
@@ -4066,6 +4394,11 @@
           }
         }
       }
+      ctx.fillStyle = '#ffd700';
+      ctx.font = '5px "Press Start 2P"';
+      ctx.textAlign = 'center';
+      ctx.fillText('FINISH', x, top - 6);
+      ctx.textAlign = 'left';
     }
 
     function resizeRaceCanvas() {
@@ -4073,12 +4406,14 @@
       const raceScreen = document.getElementById('race-screen');
       const canvas = document.getElementById('race-canvas');
       const hud = raceScreen.querySelector('.race-hud');
+      const topSection = document.getElementById('race-top-section');
 
       if (raceScreen.classList.contains('hidden')) return;
 
       const w = screen.clientWidth;
       const hudH = hud.offsetHeight;
-      const h = Math.max(180, screen.clientHeight - hudH);
+      const topH = topSection?.offsetHeight || 0;
+      const h = Math.max(180, screen.clientHeight - hudH - topH);
 
       canvas.width = w;
       canvas.height = h;
@@ -4098,28 +4433,45 @@
       resizeRaceCanvas();
     }
 
-    function drawTrackDebugOverlay(ctx, W) {
+    function drawTrackDebugOverlay(ctx, W, scrollPx = 0) {
       if (!TRACK_DEBUG) return;
       const laneColors = ['#ff6eb4', '#ffd700', '#7fd7ff', '#9fff7f', '#ffb347', '#d8a8ff'];
+      const startX = worldToScreenX(positionToWorldX(0, W), scrollPx);
+      const finishX = worldToScreenX(positionToWorldX(RACE_LENGTH, W), scrollPx);
       for (let lane = 0; lane < TRACK_LAYOUT.lanes; lane++) {
         const y = getLaneGroundY(lane);
         ctx.strokeStyle = laneColors[lane];
         ctx.lineWidth = 1.5;
         ctx.globalAlpha = 0.85;
         ctx.beginPath();
-        ctx.moveTo(W * TRACK_LAYOUT.startX, y);
-        ctx.lineTo(W * TRACK_LAYOUT.finishX, y);
+        ctx.moveTo(startX, y);
+        ctx.lineTo(finishX, y);
         ctx.stroke();
       }
       ctx.globalAlpha = 1;
     }
 
-    function drawFallbackTrack(ctx, W, H) {
+    function drawFallbackTrack(ctx, W, H, scrollPx = 0) {
       updateTrackDrawRect(W, H);
-      drawTrackBackground(ctx, W, H);
-      const { dy, dh } = trackDrawRect;
-      ctx.fillStyle = '#9a4a42';
-      ctx.fillRect(0, dy, W, dh);
+      drawTrackBackground(ctx, W, H, scrollPx);
+      const { dy, dh, dw } = trackDrawRect;
+      const tileW = dw || W;
+      const offset = scrollPx % tileW;
+      let x = -offset;
+      while (x < W + tileW) {
+        ctx.fillStyle = '#9a4a42';
+        ctx.fillRect(x, dy, tileW, dh);
+        x += tileW;
+      }
+      const stripeSpacing = 42;
+      const stripeOffset = scrollPx % stripeSpacing;
+      ctx.strokeStyle = 'rgba(255,255,255,0.22)';
+      for (let sx = -stripeOffset; sx < W + stripeSpacing; sx += stripeSpacing) {
+        ctx.beginPath();
+        ctx.moveTo(sx, dy);
+        ctx.lineTo(sx, dy + dh);
+        ctx.stroke();
+      }
       for (let lane = 0; lane < TRACK_LAYOUT.lanes; lane++) {
         const y = getLaneGroundY(lane);
         ctx.strokeStyle = 'rgba(255,255,255,0.35)';
@@ -4203,9 +4555,9 @@
       if (racer.postJumpSettle > 0 || racer.hurdleRecovering) {
         return getStableRunAnimSpeed(racer);
       }
-      const speed = racer.currentSpeed;
+      const speed = getMovementRaceSpeed(racer);
       if (!Number.isFinite(speed)) return 1.1;
-      return Math.min(1.6, Math.max(0.9, speed / 14));
+      return Math.min(1.6, Math.max(0.75, speed / 14));
     }
 
     function getRacerFrame(racer, animKey, speedMod, opts = {}) {
@@ -4295,6 +4647,20 @@
             <span class="stat-value">${val}/${MAX_STAT}</span>
           </div>`;
       });
+      if (typeof getAgilityHurdleEffectiveness === 'function') {
+        const agi = getAgilityHurdleEffectiveness(gameState.player.stats.agility);
+        panel.innerHTML += `
+          <div class="agility-effectiveness">
+            HURDLE RECOVERY: ${agi.recoverySec}s after each hurdle | LANDING SLOWDOWN: −${agi.penaltyPct}%
+          </div>`;
+      }
+      if (typeof getFocusTopSpeedEffectiveness === 'function') {
+        const eff = getFocusTopSpeedEffectiveness(gameState.player.stats.focus);
+        panel.innerHTML += `
+          <div class="focus-effectiveness">
+            TOP SPEED HOLD: ${eff.minPct}%–${eff.maxPct}% each race tick (+0.3% min per Focus point)
+          </div>`;
+      }
       updateTrainButtonStates();
     }
 
@@ -4365,6 +4731,9 @@
       gameState.bonusOffered = false;
       gameState.bonusDoneThisTurn = false;
       gameState.bonusType = null;
+      gameState.skillChoices = [];
+      gameState.skillPickPending = false;
+      gameState.skillPickSource = null;
       enterTrainingScreen();
     }
 
@@ -4382,6 +4751,13 @@
         gameState.player.learnedSkills = [];
         gameState.bonusOffered = false;
         gameState.bonusDoneThisTurn = false;
+        gameState.skillChoices = [];
+        gameState.skillPickPending = false;
+        gameState.skillPickSource = null;
+        gameState.campaignPoints = {};
+        gameState.lastRacePoints = {};
+        gameState.lastScoringMeta = null;
+        gameState.player.id = 'player';
         gameState.player.racerId = selectedRacerId;
         applySelectedRacer(selectedRacerId);
       }
@@ -4393,6 +4769,81 @@
       updateTrainingWaitStatus();
       setTrainButtonsEnabled(!getLocalRoomPlayer()?.trainingComplete);
       playTrainingBgm();
+    }
+
+    function getCampaignRacerKey(racer) {
+      if (racer.playerId) return racer.playerId;
+      if (racer.id) return racer.id;
+      if (racer.isPlayer) return 'player';
+      return racer.name;
+    }
+
+    function applySoloRaceScoring(sorted) {
+      const standings = sorted.map((racer, index) => ({
+        key: getCampaignRacerKey(racer),
+        place: index + 1
+      }));
+      const awarded = awardStandingsPoints(standings, gameState.campaignPoints || {});
+      gameState.campaignPoints = awarded.totals;
+      gameState.lastRacePoints = awarded.racePoints;
+      return awarded;
+    }
+
+    function getLocalCampaignTotal() {
+      if (isMultiplayer()) {
+        const me = getLocalRoomPlayer();
+        return me?.campaignPoints || 0;
+      }
+      return gameState.campaignPoints?.[getCampaignRacerKey({ isPlayer: true, id: 'player' })] || 0;
+    }
+
+    function getCircuitLeaders(sorted) {
+      if (isMultiplayer()) {
+        const totals = multiplayer.room?.players || [];
+        return totals
+          .map((p) => ({
+            key: p.id,
+            name: p.name || 'Racer',
+            isPlayer: p.id === multiplayer.playerId,
+            total: p.campaignPoints || 0
+          }))
+          .sort((a, b) => b.total - a.total);
+      }
+      const keys = new Set(sorted.map((r) => getCampaignRacerKey(r)));
+      return [...keys]
+        .map((key) => {
+          const racer = sorted.find((r) => getCampaignRacerKey(r) === key);
+          return {
+            key,
+            name: racer?.isPlayer ? racer.name : racer?.name || key,
+            isPlayer: !!racer?.isPlayer,
+            total: gameState.campaignPoints?.[key] || 0
+          };
+        })
+        .sort((a, b) => b.total - a.total);
+    }
+
+    function playerWonCircuit(sorted) {
+      const leaders = getCircuitLeaders(sorted);
+      if (!leaders.length) return false;
+      const top = leaders[0].total;
+      const playerEntry = leaders.find((e) => e.isPlayer);
+      return !!playerEntry && playerEntry.total === top && top > 0;
+    }
+
+    function formatScoringSummary(sorted, playerPos, playerRacePts) {
+      const track = getCurrentTrack();
+      const campaignTotal = getLocalCampaignTotal();
+      let html = `<br><br><strong>+${playerRacePts} PTS THIS RACE</strong> (${track.subtitle})`;
+      html += `<br><strong>CIRCUIT TOTAL: ${campaignTotal} PTS</strong>`;
+
+      const leaders = getCircuitLeaders(sorted);
+      html += '<br><br><strong>CIRCUIT STANDINGS</strong><br>';
+      leaders.forEach((entry, index) => {
+        const tag = entry.isPlayer ? ' (YOU)' : '';
+        html += `${index + 1}. ${entry.name}${tag} — ${entry.total} pts<br>`;
+      });
+      return html;
     }
 
     function getRaceSkill(id) {
@@ -4638,56 +5089,85 @@
       return getAvailableSkillIds(gameState.player.learnedSkills || []).length > 0;
     }
 
-    function grantRandomRaceSkillLocal() {
-      const learnedSkills = gameState.player.learnedSkills || [];
-      const skillId = pickRandomRaceSkill(learnedSkills);
-      if (!skillId) return null;
-      gameState.player.learnedSkills = recordLearnedSkill(learnedSkills, skillId);
-      gameState.player.raceSkill = syncPrimaryRaceSkill(gameState.player.learnedSkills);
-      return skillId;
+    function clearSkillPickStateLocal() {
+      gameState.skillChoices = [];
+      gameState.skillPickPending = false;
+      gameState.skillPickSource = null;
+    }
+
+    function offerSkillPickLocal(source) {
+      const choices = pickRandomRaceSkillChoices(gameState.player.learnedSkills, 2);
+      if (!choices.length) return false;
+      gameState.skillChoices = choices;
+      gameState.skillPickPending = true;
+      gameState.skillPickSource = source;
+      return true;
+    }
+
+    function maybeOfferTrainingSkillPickLocal() {
+      if (gameState.skillPickPending) return false;
+      if (!canOfferSkillBonusLocal()) return false;
+      if (Math.random() >= SKILL_BONUS_CHANCE) return false;
+      return offerSkillPickLocal('train');
     }
 
     function resolveTrainingBonusesLocal() {
-      let skillGranted = null;
-      if (gameState.turn === SKILL_TURN) {
-        skillGranted = grantRandomRaceSkillLocal() || skillGranted;
-      }
+      maybeOfferTrainingSkillPickLocal();
+
       gameState.bonusOffered = Math.random() < BONUS_EVENT_CHANCE;
       if (!gameState.bonusOffered) {
         gameState.bonusDoneThisTurn = true;
         gameState.bonusType = null;
-        return skillGranted;
-      }
-      if (canOfferSkillBonusLocal() && Math.random() < SKILL_BONUS_CHANCE) {
-        gameState.bonusType = 'skill';
       } else {
         gameState.bonusType = 'stat';
       }
-      if (gameState.bonusType === 'skill' && !canOfferSkillBonusLocal()) {
-        gameState.bonusType = 'stat';
-      }
-      if (gameState.bonusType === 'skill') {
-        skillGranted = grantRandomRaceSkillLocal();
-        if (skillGranted) {
-          gameState.bonusDoneThisTurn = true;
-        } else {
-          gameState.bonusType = 'stat';
-          gameState.bonusDoneThisTurn = false;
-        }
-      } else {
+
+      if (gameState.skillPickPending && gameState.bonusOffered) {
         gameState.bonusDoneThisTurn = false;
       }
-      return skillGranted;
     }
 
-    function handleTrainingNextStep(next, skillGranted) {
-      if (skillGranted) {
-        showSkillRevealModal(skillGranted, () => handleTrainingNextStep(next));
-        return;
-      }
-      if (next === 'skill-reveal') {
-        const latestSkill = gameState.player.learnedSkills?.[gameState.player.learnedSkills.length - 1];
-        showSkillRevealModal(latestSkill, () => advanceTurn());
+    function getTrainingNextStepLocal() {
+      if (gameState.skillPickPending) return 'skill-pick';
+      if (gameState.bonusOffered && !gameState.bonusDoneThisTurn) return 'bonus';
+      return 'advance';
+    }
+
+    function grantChosenSkillLocal(skillId) {
+      if (!gameState.skillPickPending) return null;
+      if (!gameState.skillChoices?.includes(skillId)) return null;
+
+      const learnedSkills = gameState.player.learnedSkills || [];
+      gameState.player.learnedSkills = recordLearnedSkill(learnedSkills, skillId);
+      gameState.player.raceSkill = syncPrimaryRaceSkill(gameState.player.learnedSkills);
+      clearSkillPickStateLocal();
+
+      return { skillId };
+    }
+
+    function handleTrainingNextStep(next, skillChoices) {
+      if (next === 'skill-pick' || (skillChoices?.length && gameState.skillPickPending)) {
+        const choices = skillChoices?.length ? skillChoices : gameState.skillChoices;
+        showSkillPickModal(choices, (pickedId) => {
+          if (isMultiplayer()) {
+            multiplayer.socket.emit('training:pick-skill', { skillId: pickedId }, (res) => {
+              if (!res?.ok) return;
+              syncLocalPlayerFromRoom();
+              renderStats();
+              updateSkillDisplay();
+              handleTrainingNextStep(res.next, res.skillChoices || null);
+            });
+            return;
+          }
+
+          const result = grantChosenSkillLocal(pickedId);
+          if (!result) return;
+          updateSkillDisplay();
+          handleTrainingNextStep(
+            getTrainingNextStepLocal(),
+            gameState.skillPickPending ? gameState.skillChoices : null
+          );
+        });
         return;
       }
       if (next === 'bonus') {
@@ -4703,7 +5183,7 @@
           if (!res?.ok) return;
           syncLocalPlayerFromRoom();
           renderStats();
-          handleTrainingNextStep(res.next, res.skillGranted || null);
+          handleTrainingNextStep(res.next, res.skillChoices || null);
         });
         return;
       }
@@ -4723,13 +5203,42 @@
     }
 
     function continueAfterTraining() {
-      const skillGranted = resolveTrainingBonusesLocal();
+      resolveTrainingBonusesLocal();
       handleTrainingNextStep(
-        gameState.bonusOffered && !gameState.bonusDoneThisTurn
-          ? (gameState.bonusType === 'skill' ? 'skill-reveal' : 'bonus')
-          : 'advance',
-        skillGranted
+        getTrainingNextStepLocal(),
+        gameState.skillPickPending ? gameState.skillChoices : null
       );
+    }
+
+    function showSkillPickModal(skillChoices, onPick) {
+      const modal = document.getElementById('skill-modal');
+      const options = document.getElementById('skill-options');
+      const prompt = document.getElementById('skill-reveal-text');
+      const title = modal?.querySelector('h3');
+      options.innerHTML = '';
+
+      if (title) title.textContent = 'CHOOSE A RACE SKILL!';
+      if (prompt) {
+        prompt.textContent = skillChoices.length > 1
+          ? 'Pick one of these abilities to learn during training.'
+          : 'This is the last ability you can learn — take it!';
+      }
+
+      skillChoices.forEach((skillId) => {
+        const skill = getRaceSkill(skillId);
+        if (!skill) return;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'skill-btn';
+        btn.innerHTML = `<span class="skill-name">${skill.name}</span>${skill.description}`;
+        btn.onclick = () => {
+          modal.classList.add('hidden');
+          onPick(skillId);
+        };
+        options.appendChild(btn);
+      });
+
+      modal.classList.remove('hidden');
     }
 
     function showSkillRevealModal(skillId, callback) {
@@ -4884,6 +5393,22 @@
         time.className = 'results-time';
         time.textContent = formatRaceTime(racer.finishTime);
 
+        const points = document.createElement('div');
+        points.className = 'results-points';
+        const raceKey = getCampaignRacerKey(racer);
+        const racePts = gameState.lastRacePoints?.[raceKey] ?? gameState.lastRacePoints?.[racer.id];
+        const isHumanRacer = racer.isPlayer || racer.isHuman || !!racer.playerId;
+        const totalPts = isMultiplayer()
+          ? (racer.playerId === multiplayer.playerId
+            ? getLocalCampaignTotal()
+            : multiplayer.room?.players?.find((p) => p.id === racer.playerId)?.campaignPoints)
+          : gameState.campaignPoints?.[raceKey];
+        if (racePts != null) {
+          points.textContent = isHumanRacer
+            ? `+${racePts} pts  |  Circuit: ${totalPts ?? 0} pts`
+            : `+${racePts} pts this race`;
+        }
+
         const stats = document.createElement('div');
         stats.className = 'lineup-stats';
         stats.innerHTML = formatLineupStatsHtml(racer.stats);
@@ -4892,6 +5417,7 @@
         card.appendChild(canvas);
         card.appendChild(name);
         card.appendChild(time);
+        if (racePts != null) card.appendChild(points);
         appendRacerCardMeta(card, racer);
         card.appendChild(stats);
         grid.appendChild(card);
@@ -5023,7 +5549,7 @@
     const CPU_STAT_MIN = 1;
     const CPU_RACE_STAT_TOTAL = 100;
     const CPU_MIN_SPEED_STAT = 35;
-    const CPU_MIN_RACE_SPEED = 5;
+    // CPU_MIN_RACE_SPEED and calcBaseSpeed live in racer-stats.js
 
     function getCpuRunners() {
       if (typeof CPU_STATS_TEXT !== 'undefined') {
@@ -5054,6 +5580,7 @@
     function generateCPUs() {
       const configs = getCpuRunners().slice(0, RACE_LANE_COUNT - 1);
       gameState.cpus = configs.map((runner, i) => ({
+        id: `cpu-${i}`,
         name: runner.name,
         stats: rollRandomCpuStats(),
         isPlayer: false,
@@ -5063,10 +5590,6 @@
     }
 
     // --- Race Mechanics ---
-    function calcBaseSpeed(racer) {
-      return racer.stats.speed * 2.5;
-    }
-
     function applyCpuMinRaceSpeed(racer) {
       if (!racer.isPlayer && !racer.finished) {
         racer.currentSpeed = Math.max(racer.currentSpeed, CPU_MIN_RACE_SPEED);
@@ -5079,12 +5602,10 @@
       return speed;
     }
 
-    function getFocusPaceTuning(focus) {
-      const t = Math.min(1, Math.max(0, ((focus ?? PACE_FOCUS_BASE) - PACE_FOCUS_BASE) / PACE_FOCUS_SCALE));
-      return {
-        floor: PACE_FLOOR_MIN + t * (PACE_FLOOR_MAX - PACE_FLOOR_MIN),
-        variance: PACE_VARIANCE_MAX - t * (PACE_VARIANCE_MAX - PACE_VARIANCE_MIN)
-      };
+    function getMovementRaceSpeed(racer) {
+      const base = getEffectiveRaceSpeed(racer);
+      const paceMult = racer?.paceMultiplier ?? 1;
+      return base * paceMult;
     }
 
     function getPaceVarianceMultiplier(racer) {
@@ -5113,12 +5634,25 @@
 
     function formatSpeedMph(racer) {
       if (!racer || racer.finished) return '0.0';
-      return (getEffectiveRaceSpeed(racer) * RACE_SPEED_TO_MPH).toFixed(1);
+      return (getMovementRaceSpeed(racer) * RACE_SPEED_TO_MPH).toFixed(1);
+    }
+
+    function formatPaceHoldPct(racer) {
+      if (!racer || racer.finished) return '--';
+      const mult = racer.paceMultiplier ?? 1;
+      return Math.round(mult * 100);
     }
 
     function updateRaceSpeedDisplay(racer) {
-      document.getElementById('race-speed').textContent =
-        `SPEED: ${formatSpeedMph(racer)} MPH`;
+      let line = `SPEED: ${formatSpeedMph(racer)} MPH  |  PACE HOLD: ${formatPaceHoldPct(racer)}%`;
+      if (racer?.hurdleRecovering && !racer.finished) {
+        const left = Math.max(
+          0,
+          (racer.hurdleRecoveryDuration || 0) - (racer.hurdleRecoveryTimer || 0)
+        );
+        line += `  |  RECOVERING: ${left.toFixed(1)}s`;
+      }
+      document.getElementById('race-speed').textContent = line;
     }
 
     function createRacerState(racer, lane) {
@@ -5139,7 +5673,6 @@
         skillTriggers: {},
         finished: false,
         finishTime: null,
-        passingCooldown: 0,
         animOffset: racer.animOffset || 0,
         hurdlesCleared: createHurdlesClearedState(),
         hurdleJumpTriggered: createHurdleJumpTriggeredState(),
@@ -5151,15 +5684,12 @@
         hurdleRecovering: false,
         hurdleRecoveryTimer: 0,
         hurdleRecoveryDuration: 0,
-        hurdleRecoveryTarget: 0
+        hurdleRecoveryTarget: 0,
+        hurdlePenaltyMult: getHurdleSpeedMultiplier(racer.stats?.agility),
+        paceMultiplier: 1
       };
       applyCpuMinRaceSpeed(state);
       return state;
-    }
-
-    function getHurdleRecoveryDuration(agility) {
-      const recoveryRate = 1 + (agility / 10) * 0.1;
-      return HURDLE_RECOVERY_BASE_SEC / recoveryRate;
     }
 
     function updateHurdleForRacer(racer, dt) {
@@ -5172,7 +5702,8 @@
       if (racer.hurdleRecovering) {
         racer.hurdleRecoveryTimer += dt;
         const t = Math.min(1, racer.hurdleRecoveryTimer / racer.hurdleRecoveryDuration);
-        racer.currentSpeed = racer.hurdleRecoveryTarget * (HURDLE_SPEED_MULTIPLIER + (1 - HURDLE_SPEED_MULTIPLIER) * t);
+        const penaltyMult = racer.hurdlePenaltyMult ?? getHurdleSpeedMultiplier(racer.stats?.agility);
+        racer.currentSpeed = racer.hurdleRecoveryTarget * (penaltyMult + (1 - penaltyMult) * t);
         if (t >= 1) {
           racer.hurdleRecovering = false;
           racer.currentSpeed = racer.hurdleRecoveryTarget;
@@ -5200,14 +5731,17 @@
         if (!racer.hurdlesCleared[i] && racer.position >= zone.clearPos) {
           racer.hurdlesCleared[i] = true;
           racer.hurdleRecoveryTarget = racer.currentSpeed;
-          racer.currentSpeed = racer.hurdleRecoveryTarget * HURDLE_SPEED_MULTIPLIER;
+          racer.hurdlePenaltyMult = getHurdleSpeedMultiplier(racer.stats.agility);
+          racer.currentSpeed = racer.hurdleRecoveryTarget * racer.hurdlePenaltyMult;
           racer.hurdleRecovering = true;
           racer.hurdleRecoveryTimer = 0;
           racer.hurdleRecoveryDuration = getHurdleRecoveryDuration(racer.stats.agility);
 
           if (racer.isPlayer) {
-            const secs = racer.hurdleRecoveryDuration.toFixed(1);
-            gameState.eventLog.push(`Hurdle ${i + 1} cleared! -50% speed, recovering in ${secs}s`);
+            const agiFx = getAgilityHurdleEffectiveness(racer.stats.agility);
+            gameState.eventLog.push(
+              `Hurdle ${i + 1} cleared! -${agiFx.penaltyPct}% speed, recovering in ${agiFx.recoverySec}s`
+            );
           }
         }
       }
@@ -5260,22 +5794,25 @@
 
       if (hasSkill('midraceSurge') && !racer.skillTriggers.midraceSurge && progress >= 0.5) {
         racer.skillTriggers.midraceSurge = true;
-        racer.currentSpeed += 20;
-        logSkill('Midrace Surge! +20 Speed!');
+        const surge = scaleSkillSpeedBoost(20);
+        racer.currentSpeed += surge;
+        logSkill(`Midrace Surge! +${surge} Speed!`);
       }
 
       if (hasSkill('finalKick') && !racer.skillTriggers.finalKick && progress >= 0.75) {
         racer.skillTriggers.finalKick = true;
-        racer.currentSpeed += 30;
-        logSkill('Final Kick! +30 Speed!');
+        const kick = scaleSkillSpeedBoost(30);
+        racer.currentSpeed += kick;
+        logSkill(`Final Kick! +${kick} Speed!`);
       }
 
       if (hasSkill('photoFinish') && !racer.skillTriggers.photoFinish && progress >= PHOTO_FINISH_PROGRESS) {
         racer.skillTriggers.photoFinish = true;
         const boost = getPhotoFinishBoost(racer, gameState.racers);
         racer.currentSpeed += boost;
+        const leaderBoost = scaleSkillSpeedBoost(PHOTO_FINISH_SPEED);
         logSkill(
-          boost > PHOTO_FINISH_SPEED
+          boost > leaderBoost
             ? `Photo Finish! +${boost} Speed — closing the gap!`
             : `Photo Finish! +${boost} Speed!`
         );
@@ -5392,6 +5929,51 @@
       return normalizeReplayRacer(r);
     }
 
+    const RACE_PROGRESS_COLORS = {
+      'cpu-mint': '#7fd7ff',
+      'cpu-rose': '#ff6eb4',
+      'cpu-sky': '#5eb5e8',
+      'cpu-lime': '#9fff7f',
+      'cpu-violet': '#d8a8ff',
+      purple: '#c77dff',
+      yellow: '#ffe566',
+      orange: '#ff9a4a'
+    };
+
+    function getRacerProgressColor(racer) {
+      if (racer.isPlayer) return '#ffd700';
+      if (racer.cpuStyleId) return RACE_PROGRESS_COLORS[racer.cpuStyleId] || '#fff';
+      return RACE_PROGRESS_COLORS[racer.racerId] || '#fff';
+    }
+
+    function updateRaceProgressBar(racers) {
+      const track = document.getElementById('race-progress-track');
+      if (!track) return;
+
+      const list = racers || gameState.racers || [];
+      track.innerHTML = '';
+
+      const drawOrder = [...list].sort((a, b) => {
+        if (a.isPlayer) return 1;
+        if (b.isPlayer) return -1;
+        return a.position - b.position;
+      });
+
+      drawOrder.forEach((racer) => {
+        const pct = Math.min(100, Math.max(0, getRaceProgress(racer.position) * 100));
+        const marker = document.createElement('div');
+        marker.className = 'race-progress-marker' + (racer.isPlayer ? ' player-marker' : '');
+        marker.style.left = `${pct}%`;
+        marker.style.backgroundColor = getRacerProgressColor(racer);
+
+        const label = document.createElement('span');
+        label.className = 'race-progress-marker-label';
+        label.textContent = racer.isPlayer ? 'YOU' : racer.name.substring(0, 3).toUpperCase();
+        marker.appendChild(label);
+        track.appendChild(marker);
+      });
+    }
+
     function updateReplayHUD() {
       const racers = gameState.replayRacers || [];
       const player = racers.find(r => r.isPlayer) || racers[0];
@@ -5402,6 +5984,7 @@
       document.getElementById('race-position').textContent =
         `REPLAY  |  POS ${pos}${getOrdinal(pos)} / ${getRaceFieldSize()}  |  LAP ${getLapNumber(player.position)}/${TOTAL_LAPS} (${lapPct}%)`;
       updateRaceSpeedDisplay(player);
+      updateRaceProgressBar(racers);
       document.getElementById('event-log').textContent = 'Watching race replay...';
     }
 
@@ -5580,6 +6163,7 @@
       document.getElementById('race-position').textContent =
         `POSITION: ${pos}${getOrdinal(pos)} / ${getRaceFieldSize()}  |  LAP ${lap}/${TOTAL_LAPS} (${lapPct}%)`;
       updateRaceSpeedDisplay(player);
+      updateRaceProgressBar(gameState.racers);
       document.getElementById('event-log').textContent = gameState.eventLog.slice(-2).join('  |  ');
     }
 
@@ -5636,31 +6220,10 @@
           speed *= STAMINA_PENALTY_SPEED_MULT;
         }
 
-        // Passing logic
-        if (racer.passingCooldown > 0) {
-          racer.passingCooldown -= dt;
-        }
-
-        const ahead = gameState.racers
-          .filter(r => !r.finished && r.position > racer.position && r.position - racer.position < 30)
-          .sort((a, b) => a.position - b.position)[0];
-
-        if (ahead && racer.passingCooldown <= 0) {
-          const passChance = racer.stats.agility / (racer.stats.agility + ahead.stats.agility + 5);
-          if (Math.random() < passChance * dt * 0.5) {
-            const boost = 15 + racer.stats.agility * 2;
-            racer.position = Math.min(racer.position + boost, ahead.position + 5);
-            racer.passingCooldown = 2;
-            if (racer.isPlayer) {
-              gameState.eventLog.push(`Passed ${ahead.name}!`);
-            } else if (ahead.isPlayer) {
-              gameState.eventLog.push(`${racer.name} passed you!`);
-            }
-          }
-        }
-
         // Focus steadies pacing — high focus means less random speed wobble
-        speed *= getPaceVarianceMultiplier(racer);
+        const paceMult = getPaceVarianceMultiplier(racer);
+        racer.paceMultiplier = paceMult;
+        speed *= paceMult;
 
         if (!racer.isPlayer) {
           speed = Math.max(speed, CPU_MIN_RACE_SPEED);
@@ -5732,23 +6295,26 @@
       const drawRacers = racersOverride || gameState.racers;
       const player = drawRacers.find(r => r.isPlayer) || drawRacers[0];
       const lapProgress = player ? getLapProgress(player.position) : 0;
+      const scrollPx = player ? getCameraScrollPx(player.position, W) : 0;
 
       if (trackReady && trackLaneImage) {
-        drawTrackBackground(ctx, W, H);
-        drawScrollingTrack(ctx, getTrackScrollPx(lapProgress), W);
+        drawTrackBackground(ctx, W, H, scrollPx);
+        drawScrollingTrack(ctx, scrollPx, W);
       } else {
-        drawFallbackTrack(ctx, W, H);
+        drawFallbackTrack(ctx, W, H, scrollPx);
       }
 
       const spriteH = getRunnerSpriteHeight();
 
-      drawHurdles(ctx, W, spriteH);
-      drawFinishLine(ctx, W);
-      drawTrackDebugOverlay(ctx, W);
+      drawStartLine(ctx, W, scrollPx);
+      drawHurdles(ctx, W, spriteH, scrollPx);
+      drawFinishLine(ctx, W, scrollPx);
+      drawTrackDebugOverlay(ctx, W, scrollPx);
       const sorted = [...drawRacers].sort((a, b) => a.position - b.position);
       const raceOpts = { race: true };
       sorted.forEach((racer) => {
-        const pt = getRacerScreenPoint(racer, W);
+        const pt = getRacerScreenPoint(racer, W, scrollPx);
+        if (pt.x < -spriteH * 2 || pt.x > W + spriteH * 2) return;
         const animKey = getRacerAnimation(racer);
         const speedMod = getRacerAnimSpeed(racer);
         const frame = getRacerFrame(racer, animKey, speedMod, raceOpts);
@@ -5843,8 +6409,14 @@
           btn.disabled = false;
         }
       } else {
-        btn.textContent = 'PLAY AGAIN';
-        btn.disabled = false;
+        if (isMultiplayer()) {
+          const isHost = multiplayer.room?.hostId === multiplayer.playerId;
+          btn.textContent = isHost ? 'PLAY AGAIN WITH FRIENDS' : 'WAITING FOR HOST...';
+          btn.disabled = !isHost;
+        } else {
+          btn.textContent = 'PLAY AGAIN';
+          btn.disabled = false;
+        }
       }
     }
 
@@ -5865,19 +6437,43 @@
       const playerPos = sorted.findIndex(r => r.isPlayer) + 1;
       const won = playerPos === 1;
       const playerTime = formatRaceTime(player?.finishTime);
+      const trackIndex = gameState.trackIndex ?? 0;
+      const isFinalTrack = !hasMoreTracks();
+
+      if (!isMultiplayer()) {
+        applySoloRaceScoring(sorted);
+      }
+
+      const playerKey = player ? getCampaignRacerKey(player) : 'player';
+      const playerRacePts = gameState.lastRacePoints?.[playerKey] ?? gameState.lastRacePoints?.[player?.id] ?? 0;
 
       showScreen('results-screen');
 
       const title = document.getElementById('result-title');
       const text = document.getElementById('result-text');
       const track = getCurrentTrack();
-      title.className = won ? 'win' : 'lose';
-      title.textContent = `${track.subtitle} — ${won ? 'VICTORY!' : 'DEFEAT...'}`;
+      const circuitWon = isFinalTrack && playerWonCircuit(sorted);
 
-      text.innerHTML = won
-        ? 'Your catgirl crossed the line first!<br>Nya nya~!'
-        : `You finished ${playerPos}${getOrdinal(playerPos)}.<br>Train harder next time!`;
+      if (isFinalTrack) {
+        title.className = circuitWon ? 'win' : 'lose';
+        title.textContent = circuitWon ? 'CIRCUIT CHAMPION!' : 'CIRCUIT COMPLETE';
+      } else {
+        title.className = won ? 'win' : 'lose';
+        title.textContent = `${track.subtitle} — ${won ? 'VICTORY!' : 'DEFEAT...'}`;
+      }
+
+      if (isFinalTrack) {
+        text.innerHTML = circuitWon
+          ? 'Most circuit points after all three tracks!<br>Purrfect racing~!'
+          : `You finished the circuit with ${getLocalCampaignTotal()} pts.<br>Train harder and climb the standings next time!`;
+      } else {
+        text.innerHTML = won
+          ? 'Your catgirl crossed the line first!<br>Nya nya~!'
+          : `You finished ${playerPos}${getOrdinal(playerPos)}.<br>Train harder next time!`;
+      }
+
       text.innerHTML += `<br><br><strong>YOUR TIME: ${playerTime}</strong>`;
+      text.innerHTML += formatScoringSummary(sorted, playerPos, playerRacePts);
 
       renderResultsGrid(sorted);
 
@@ -5921,6 +6517,7 @@
     document.getElementById('start-btn').onclick = handleSetupAction;
     document.getElementById('lobby-ready-btn').onclick = toggleLobbyReady;
     document.getElementById('lobby-start-btn').onclick = hostStartTraining;
+    document.getElementById('lobby-leave-btn').onclick = leaveMultiplayerLobby;
     document.getElementById('lineup-start-btn').onclick = startRace;
     document.getElementById('racer-name-input').addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && gameState.phase === 'setup') {
@@ -5943,6 +6540,7 @@
     document.getElementById('restart-btn').onclick = () => {
       if (gameState.phase === 'results' && hasMoreTracks()) {
         if (isMultiplayer()) {
+          if (multiplayer.room?.hostId !== multiplayer.playerId) return;
           multiplayer.socket.emit('host:start-next-training', {}, (res) => {
             if (!res?.ok) return;
             if (res.trackIndex != null) gameState.trackIndex = res.trackIndex;
@@ -5950,6 +6548,16 @@
           return;
         }
         startNextTrainingPhase();
+        return;
+      }
+      if (gameState.phase === 'results' && isMultiplayer()) {
+        if (multiplayer.room?.hostId !== multiplayer.playerId) return;
+        multiplayer.socket.emit('host:play-again', {}, (res) => {
+          if (!res?.ok) {
+            const text = document.getElementById('result-text');
+            if (text) text.innerHTML += `<br><br>${res?.error || 'Could not restart'}`;
+          }
+        });
         return;
       }
       stopSetupBgm();
@@ -6002,10 +6610,10 @@
     }, { once: true });
 
     applyOfflineFileModeUI();
+    applyOnlineModeUI();
     loadTitleArt();
     if (!IS_OFFLINE_FILE_MODE) {
-      loadOnlineSocketScript().then(() => {
-        ensureMultiplayerSocket();
+      waitForOnlineServer().then(() => {
         if (loadMultiplayerSession()) tryReconnectSession();
       });
     }
