@@ -1671,6 +1671,10 @@
 
     let selectedRacerId = 'purple';
     let onlineServerReadyPromise = null;
+    let serverRaceInterp = null;
+    let serverRaceEndTimer = null;
+    let serverRaceEnded = false;
+    const SERVER_TICK_MS = 50;
 
     const multiplayer = {
       mode: 'solo',
@@ -1948,11 +1952,16 @@
       multiplayer.socket = socket;
       socket.on('connect', () => {
         multiplayer.connected = true;
-        if (multiplayer.mode === 'solo' && loadMultiplayerSession()) {
+        onlineServerReadyPromise = null;
+        if (loadMultiplayerSession() && multiplayer.mode !== 'solo') {
+          multiplayer.reconnectAttempted = false;
           tryReconnectSession();
         }
       });
-      socket.on('disconnect', () => { multiplayer.connected = false; });
+      socket.on('disconnect', () => {
+        multiplayer.connected = false;
+        multiplayer.reconnectAttempted = false;
+      });
       socket.on('room:updated', (room) => {
         multiplayer.room = { ...multiplayer.room, ...room };
         if (room.trackIndex != null) gameState.trackIndex = room.trackIndex;
@@ -2008,13 +2017,7 @@
       });
       socket.on('race:finished', (data) => {
         if (gameState.serverRace) {
-          handleMultiplayerRaceFinished(data);
-          gameState.raceRunning = false;
-          gameState.raceFinished = true;
-          gameState.resultsDelay = 0;
-          setRaceSkipVisible(false);
-          setRaceSpeedControlsVisible(false);
-          if (gameState.phase === 'race') showResults();
+          completeServerRace(data);
         }
       });
       return socket;
@@ -2502,6 +2505,7 @@
     function resumeMultiplayerRace(raceSync, toResults) {
       if (raceSync.trackIndex != null) gameState.trackIndex = raceSync.trackIndex;
       cacheRacerMeta(raceSync.field);
+      resetServerRacePlayback();
       gameState.serverRace = true;
       mergeServerRacers(raceSync.racers);
       gameState.raceTime = raceSync.time || 0;
@@ -2536,9 +2540,69 @@
       requestAnimationFrame(raceLoop);
     }
 
+    function resetServerRacePlayback() {
+      serverRaceInterp = null;
+      serverRaceEnded = false;
+      gameState._serverReplayMod = 0;
+      if (serverRaceEndTimer) {
+        clearTimeout(serverRaceEndTimer);
+        serverRaceEndTimer = null;
+      }
+    }
+
+    function snapshotRacerPositions(racers) {
+      return (racers || []).map((r) => ({ id: r.id, position: r.position }));
+    }
+
+    function getDisplayRacers() {
+      if (!gameState.serverRace || !serverRaceInterp?.to?.length) {
+        return gameState.racers;
+      }
+      const elapsed = performance.now() - (serverRaceInterp.start || 0);
+      const u = Math.min(1, elapsed / SERVER_TICK_MS);
+      const fromById = new Map((serverRaceInterp.from || []).map((r) => [r.id, r.position]));
+      return serverRaceInterp.to.map((racer) => {
+        const fromPos = fromById.get(racer.id);
+        if (fromPos == null || !Number.isFinite(fromPos)) return racer;
+        return {
+          ...racer,
+          position: fromPos + (racer.position - fromPos) * u
+        };
+      });
+    }
+
+    function completeServerRace(resultsData) {
+      if (serverRaceEnded) return;
+      serverRaceEnded = true;
+      if (serverRaceEndTimer) {
+        clearTimeout(serverRaceEndTimer);
+        serverRaceEndTimer = null;
+      }
+      gameState.raceRunning = false;
+      gameState.raceFinished = true;
+      gameState.resultsDelay = 1.0;
+      setRaceSkipVisible(false);
+      setRaceSpeedControlsVisible(false);
+      if (resultsData) handleMultiplayerRaceFinished(resultsData);
+      finalizeReplayRecording();
+      if (gameState.phase === 'race') {
+        showResults();
+      }
+    }
+
+    function scheduleServerRaceEndFallback() {
+      if (serverRaceEndTimer) clearTimeout(serverRaceEndTimer);
+      serverRaceEndTimer = setTimeout(() => {
+        if (gameState.serverRace && gameState.raceFinished && gameState.phase === 'race') {
+          completeServerRace(null);
+        }
+      }, 5000);
+    }
+
     function beginMultiplayerRace(data) {
       if (data.trackIndex != null) gameState.trackIndex = data.trackIndex;
       cacheRacerMeta(data.field);
+      resetServerRacePlayback();
       setReplaySkipVisible(false);
       const isHost = multiplayer.room?.hostId === multiplayer.playerId;
       setRaceSkipVisible(isHost);
@@ -2569,8 +2633,14 @@
     }
 
     function applyServerRaceTick(tick) {
+      serverRaceInterp = {
+        from: snapshotRacerPositions(gameState.racers),
+        to: null,
+        start: performance.now()
+      };
       gameState.raceTime = tick.t;
       mergeServerRacers(tick.racers);
+      serverRaceInterp.to = gameState.racers.map((r) => ({ ...r }));
       if (tick.events?.length) {
         tick.events.forEach((ev) => {
           if (!ev.playerId || ev.playerId === multiplayer.playerId) {
@@ -2578,14 +2648,17 @@
           }
         });
       }
-      recordReplaySample(0.05);
+      if (!gameState._serverReplayMod) gameState._serverReplayMod = 0;
+      gameState._serverReplayMod++;
+      if (gameState._serverReplayMod % 5 === 0) {
+        captureReplayFrame();
+      }
       if (tick.finished) {
         gameState.raceRunning = false;
         gameState.raceFinished = true;
-        gameState.resultsDelay = 2.5;
         setRaceSkipVisible(false);
         setRaceSpeedControlsVisible(false);
-        finalizeReplayRecording();
+        scheduleServerRaceEndFallback();
       }
       updateRaceHUD();
     }
@@ -6254,30 +6327,36 @@
 
     let lastTime = 0;
     function raceLoop(timestamp) {
-      const dt = lastTime ? Math.min((timestamp - lastTime) / 1000, 0.05) : 0;
-      const scaledDt = dt * raceSpeedMultiplier;
-      lastTime = timestamp;
-      globalAnimTime = timestamp / 1000;
+      try {
+        const dt = lastTime ? Math.min((timestamp - lastTime) / 1000, 0.05) : 0;
+        const scaledDt = dt * raceSpeedMultiplier;
+        lastTime = timestamp;
+        globalAnimTime = timestamp / 1000;
 
-      if (gameState.phase === 'race') {
-        if (gameState.raceRunning && !gameState.serverRace) {
-          raceUpdate(scaledDt);
-          recordReplaySample(scaledDt);
-        } else if (gameState.raceFinished && !gameState.serverRace) {
-          recordReplaySample(scaledDt);
-          finalizeReplayRecording();
-        }
-        if (gameState.raceRunning || gameState.raceFinished) {
-          updateRacerVisualState(scaledDt);
-        }
-        drawRace();
-        if (gameState.raceFinished) {
-          gameState.resultsDelay -= scaledDt;
-          if (gameState.resultsDelay <= 0) {
-            showResults();
-            return;
+        if (gameState.phase === 'race') {
+          if (gameState.raceRunning && !gameState.serverRace) {
+            raceUpdate(scaledDt);
+            recordReplaySample(scaledDt);
+          } else if (gameState.raceFinished && !gameState.serverRace) {
+            recordReplaySample(scaledDt);
+            finalizeReplayRecording();
+          }
+          if (gameState.raceRunning || gameState.raceFinished) {
+            updateRacerVisualState(scaledDt);
+          }
+          drawRace();
+          if (gameState.raceFinished && !gameState.serverRace) {
+            gameState.resultsDelay -= scaledDt;
+            if (gameState.resultsDelay <= 0) {
+              showResults();
+              return;
+            }
           }
         }
+      } catch (err) {
+        console.error('raceLoop error:', err);
+      }
+      if (gameState.phase === 'race') {
         requestAnimationFrame(raceLoop);
       }
     }
@@ -6292,7 +6371,7 @@
 
       updateTrackDrawRect(W, H);
 
-      const drawRacers = racersOverride || gameState.racers;
+      const drawRacers = racersOverride || getDisplayRacers();
       const player = drawRacers.find(r => r.isPlayer) || drawRacers[0];
       const lapProgress = player ? getLapProgress(player.position) : 0;
       const scrollPx = player ? getCameraScrollPx(player.position, W) : 0;

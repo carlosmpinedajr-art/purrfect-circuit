@@ -199,9 +199,15 @@ io.on('connection', (socket) => {
     broadcastRoom(room);
 
     room.raceTimer = setInterval(() => {
-      const events = raceTick(room.race, RACE_TICK_DT);
-      io.to(room.code).emit('race:tick', serializeRaceTick(room.race, events));
-      if (room.race.finished) {
+      try {
+        if (!room.race?.running) return;
+        const events = raceTick(room.race, RACE_TICK_DT);
+        io.to(room.code).emit('race:tick', serializeRaceTick(room.race, events));
+        if (room.race.finished) {
+          finishRace(room);
+        }
+      } catch (err) {
+        console.error('race tick error:', err);
         finishRace(room);
       }
     }, RACE_TICK_MS);
