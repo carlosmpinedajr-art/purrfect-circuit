@@ -15,7 +15,7 @@ const TRACKS = [
     id: 'long',
     name: 'Long Track',
     subtitle: 'LONG TRACK',
-    staminaRequirement: 150
+    staminaRequirement: 90
   }
 ];
 
