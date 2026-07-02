@@ -177,8 +177,8 @@ io.on('connection', (socket) => {
     }
     initRoomTraining(room);
     setRoomPhase(room, 'training');
-    io.to(room.code).emit('room:phase', { phase: 'training' });
     broadcastRoom(room);
+    io.to(room.code).emit('room:phase', { phase: 'training' });
     if (typeof ack === 'function') ack({ ok: true });
   });
 
@@ -186,8 +186,8 @@ io.on('connection', (socket) => {
     if (room.phase !== 'training' || !allTrainingComplete(room)) return;
     buildLineupField(room);
     setRoomPhase(room, 'lineup');
-    io.to(room.code).emit('room:phase', { phase: 'lineup' });
     broadcastRoom(room);
+    io.to(room.code).emit('room:phase', { phase: 'lineup' });
   }
 
   function startRaceLoop(room) {
@@ -304,9 +304,9 @@ io.on('connection', (socket) => {
     stopRace(room);
     resetRoomForPlayAgain(room);
     setRoomPhase(room, 'lobby');
-    io.to(room.code).emit('room:phase', { phase: 'lobby', trackIndex: 0 });
     broadcastRoom(room);
-    if (typeof ack === 'function') ack({ ok: true });
+    io.to(room.code).emit('room:phase', { phase: 'lobby', trackIndex: 0 });
+    if (typeof ack === 'function') ack({ ok: true, room: serializeRoom(room) });
   });
 
   socket.on('room:leave', (ack) => {
@@ -345,9 +345,11 @@ io.on('connection', (socket) => {
     room.raceResults = null;
     initRoomTrainingPhase2(room);
     setRoomPhase(room, 'training');
-    io.to(room.code).emit('room:phase', { phase: 'training', trackIndex: room.trackIndex });
     broadcastRoom(room);
-    if (typeof ack === 'function') ack({ ok: true, trackIndex: room.trackIndex });
+    io.to(room.code).emit('room:phase', { phase: 'training', trackIndex: room.trackIndex });
+    if (typeof ack === 'function') {
+      ack({ ok: true, trackIndex: room.trackIndex, room: serializeRoom(room) });
+    }
   });
 
   socket.on('host:start-race', (ack) => {

@@ -1969,10 +1969,20 @@
         if (me) multiplayer.localReady = !!me.ready;
         if (gameState.phase === 'lobby') renderLobby();
         if (gameState.phase === 'results') updateResultsContinueButton();
+        if (room.phase === 'training' && gameState.phase === 'results') {
+          syncLocalPlayerFromRoom();
+          enterTrainingScreen();
+          return;
+        }
         if (gameState.phase === 'training') {
           syncLocalPlayerFromRoom();
+          renderStats();
+          updateTrainingUI();
           renderTrainingRivals();
           updateTrainingWaitStatus();
+          if (!trainingModalActive) {
+            setTrainButtonsEnabled(!getLocalRoomPlayer()?.trainingComplete);
+          }
         }
         if (gameState.phase === 'lineup' && room.field?.length) {
           buildMultiplayerLineup();
@@ -2360,7 +2370,7 @@
       gameState.player.stats = { ...me.stats };
       gameState.player.learnedSkills = [...(me.learnedSkills || [])];
       gameState.player.raceSkill = syncPrimaryRaceSkill(gameState.player.learnedSkills) || me.raceSkill || null;
-      gameState.turn = me.turn || gameState.turn;
+      gameState.turn = me.turn != null ? me.turn : gameState.turn;
       if (me.racerId) applySelectedRacer(me.racerId);
     }
 
@@ -2403,7 +2413,11 @@
       const me = getLocalRoomPlayer();
       const waiting = !!me?.trainingComplete && multiplayer.room?.phase === 'training';
       el.classList.toggle('hidden', !waiting);
-      if (waiting) setTrainButtonsEnabled(false);
+      if (waiting) {
+        setTrainButtonsEnabled(false);
+      } else if (!trainingModalActive) {
+        setTrainButtonsEnabled(!me?.trainingComplete);
+      }
     }
 
     function cacheRacerMeta(field) {
@@ -4785,14 +4799,27 @@
     }
 
     function enterTrainingScreen() {
+      if (isMultiplayer()) {
+        syncTrackIndexFromRoom();
+        syncLocalPlayerFromRoom();
+        gameState.bonusOffered = false;
+        gameState.bonusDoneThisTurn = false;
+        gameState.bonusType = null;
+        gameState.skillChoices = [];
+        gameState.skillPickPending = false;
+        gameState.skillPickSource = null;
+      }
       gameState.phase = 'training';
       showScreen('training-screen');
       updateTrackUI();
+      renderStats();
       updateTrainingUI();
       drawPortrait();
       renderTrainingRivals();
       updateTrainingWaitStatus();
-      setTrainButtonsEnabled(!getLocalRoomPlayer()?.trainingComplete);
+      if (!trainingModalActive) {
+        setTrainButtonsEnabled(!getLocalRoomPlayer()?.trainingComplete);
+      }
       playTrainingBgm();
       stopResultsBgm();
     }
@@ -6621,8 +6648,17 @@
         if (isMultiplayer()) {
           if (multiplayer.room?.hostId !== multiplayer.playerId) return;
           multiplayer.socket.emit('host:start-next-training', {}, (res) => {
-            if (!res?.ok) return;
+            if (!res?.ok) {
+              const text = document.getElementById('result-text');
+              if (text) text.innerHTML += `<br><br>${res?.error || 'Could not continue'}`;
+              return;
+            }
+            if (res.room) multiplayer.room = { ...multiplayer.room, ...res.room };
             if (res.trackIndex != null) gameState.trackIndex = res.trackIndex;
+            if (gameState.phase === 'results') {
+              syncLocalPlayerFromRoom();
+              enterTrainingScreen();
+            }
           });
           return;
         }
