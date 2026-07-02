@@ -399,16 +399,44 @@ function serializeRacerTick(racer) {
   };
 }
 
+function getHumanRacers(race) {
+  return (race.racers || []).filter((r) => r.playerId);
+}
+
+function allHumanRacersFinished(race) {
+  const humans = getHumanRacers(race);
+  return humans.length > 0 && humans.every((r) => r.finished);
+}
+
+function finalizeRemainingRacers(race) {
+  race.racers.forEach((racer) => {
+    if (racer.finished) return;
+    racer.finishTime = getProjectedFinishTime(racer, race.time);
+    racer.position = RACE_LENGTH;
+    racer.finished = true;
+    racer.jumping = false;
+    racer.hurdleRecovering = false;
+    racer.activeHurdleIndex = -1;
+  });
+}
+
+function tryFinishRace(race) {
+  if (!race.running || race.finished) return false;
+  if (!allHumanRacersFinished(race)) return false;
+  finalizeRemainingRacers(race);
+  race.running = false;
+  race.finished = true;
+  return true;
+}
+
 function raceTick(race, dt) {
   if (!race.running || race.finished) return [];
 
   race.time += dt;
   const events = [];
-  let allFinished = true;
 
   race.racers.forEach((racer) => {
     if (racer.finished) return;
-    allFinished = false;
 
     racer.staminaDrain += dt * 0.8;
     const lapProgress = getLapProgress(racer.position);
@@ -455,10 +483,7 @@ function raceTick(race, dt) {
     }
   });
 
-  if (allFinished || race.racers.every((r) => r.finished)) {
-    race.running = false;
-    race.finished = true;
-  }
+  tryFinishRace(race);
 
   return events;
 }
@@ -573,6 +598,8 @@ module.exports = {
   serializeFieldEntry,
   createRaceState,
   raceTick,
+  tryFinishRace,
+  allHumanRacersFinished,
   serializeRaceStart,
   serializeRaceTick,
   serializeRaceResults,

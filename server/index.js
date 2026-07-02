@@ -39,7 +39,8 @@ const {
   serializeRaceResults,
   serializeRaceSync,
   skipRace,
-  stopRace
+  stopRace,
+  tryFinishRace
 } = require('./race-sim');
 
 const RACE_TICK_MS = 50;
@@ -208,7 +209,9 @@ io.on('connection', (socket) => {
         }
       } catch (err) {
         console.error('race tick error:', err);
-        finishRace(room);
+        if (tryFinishRace(room.race)) {
+          finishRace(room);
+        }
       }
     }, RACE_TICK_MS);
   }
